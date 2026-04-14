@@ -2,7 +2,7 @@
 
 [한국어](README.ko.md) | [日本語](README.ja.md) | [MIT License](LICENSE)
 
-**[AI Code Generation Guide](AI_GUIDE.md)** — precise API reference for Claude, Gemini, ChatGPT, and other AI assistants.
+**[API Reference & Detailed Guide](AI_GUIDE.md)** — Covers exact behavior, execution order, and usage patterns in depth. Handy for developers, and paste it into Claude, Gemini, or ChatGPT for accurate AI-assisted coding.
 
 ---
 
