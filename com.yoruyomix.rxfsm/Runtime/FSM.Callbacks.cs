@@ -59,7 +59,7 @@ namespace RxFSM
             return Disposable.Create(() => list.Remove(callback));
         }
 
-        public IDisposable EnterState<TTrigger>(TState targetState, Action<TState, object> callback)
+        internal IDisposable EnterState<TTrigger>(TState targetState, Action<TState, object> callback)
             where TTrigger : struct
         {
             _onEnterStateByTrigger ??= new Dictionary<(TState, Type), List<Action<TState, object>>>();
