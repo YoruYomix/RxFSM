@@ -275,24 +275,24 @@ systemSm.ExitState<BossDefeated>(GameState.BossFight, (next, trg) =>
 **Character Icons** — Thumbnail Swaps, NEW Badges, & Awakening Effects
 
 ```csharp
-iconSm.EnterState<CharacterState.Undiscovered>((prev, trg) =>
+iconSm.EnterState(CharacterState.Undiscovered, (prev, trg) =>
 {
     thumbnail.ShowSilhouette(); 
 });
 
-iconSm.EnterState<CharacterState.New>((prev, trg) =>
+iconSm.EnterState(CharacterState.New, (prev, trg) =>
 {
     thumbnail.ShowCharacter();
     thumbnail.ShowNewBadge(); 
     thumbnail.PlayGetAnimation();
 });
 
-iconSm.EnterState<CharacterState.Owned>((prev, trg) =>
+iconSm.EnterState(CharacterState.Owned, (prev, trg) =>
 {
     thumbnail.HideNewBadge();
 });
 
-iconSm.EnterState<CharacterState.Awakened>((prev, trg) =>
+iconSm.EnterState(CharacterState.Awakened, (prev, trg) =>
 {
     thumbnail.ShowAwakeningEffect(); 
     thumbnail.ShowAwakenedCharacter();
