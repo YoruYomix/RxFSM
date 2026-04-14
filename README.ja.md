@@ -110,7 +110,7 @@ sm.EnterStateAsync<AttackInput>(State.Attack, async (prev, trg, ct) =>
 
 ---
 
-**割り込み可能な詠唱** — キャンセル処理の簡素化
+**詠唱中に妨害された魔法使い** — キャンセル時にマナ半分還元.
 
 ```csharp
 sm.EnterStateAsync<CastSpell>(State.Casting, async (prev, trg, ct) =>

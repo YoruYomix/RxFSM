@@ -110,7 +110,7 @@ sm.EnterStateAsync<AttackInput>(State.Attack, async (prev, trg, ct) =>
 
 ---
 
-**인터럽트 가능한 주문 시전** — 취소 처리 단순화
+**영창 도중 방해받는 마법사** — 취소 시 마나 절반 환불.
 
 ```csharp
 sm.EnterStateAsync<CastSpell>(State.Casting, async (prev, trg, ct) =>

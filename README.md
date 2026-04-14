@@ -111,7 +111,7 @@ sm.EnterStateAsync<AttackInput>(State.Attack, async (prev, trg, ct) =>
 
 ---
 
-**Interruptible Spell Casting** — Simplified Cancellation
+**Wizard interrupted mid-cast** — spell cancelled, half mana refunded.
 
 ```csharp
 sm.EnterStateAsync<CastSpell>(State.Casting, async (prev, trg, ct) =>
