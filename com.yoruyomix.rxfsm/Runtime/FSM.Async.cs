@@ -125,7 +125,7 @@ namespace RxFSM
             var sub = new AsyncSub { Policy = policy, HasTargetState = true, TargetState = targetState };
             (_asyncSubs ??= new List<AsyncSub>()).Add(sub);
 
-            var enterHandle = EnterState<TTrigger>(targetState, (prev, trg) =>
+            var enterHandle = EnterState<TTrigger>(targetState, (TState prev, object trg) =>
             {
                 var capturedPrev = prev;
                 var capturedTrg  = trg;
