@@ -180,6 +180,32 @@ var handle2 = sm.EnterState<SkillCast>(State.SkillCast, (prev, trg) =>
 
 `EnterState`  Dispose the handle returned upon callback reception, then receive a new callback
 
+---
+
+**Volatile design changes**
+
+```csharp
+// Designer: "Can we try the burst version?"
+var handle = sm.EnterState<SkillCast>(State.Casting, (prev, trg) =>
+    ApplyBurstEffect(trg.SkillId, trg.Target));
+
+// Designer: "Actually, the DoT version feels better."
+handle.Dispose();
+handle = sm.EnterState<SkillCast>(State.Casting, (prev, trg) =>
+    ApplyDotEffect(trg.SkillId, trg.Target));
+
+// Designer: "Hmm. What if it's an AoE?"
+handle.Dispose();
+handle = sm.EnterState<SkillCast>(State.Casting, (prev, trg) =>
+    ApplyAoeEffect(trg.SkillId, trg.Target));
+
+// Designer: "...Let's go back to burst."
+handle.Dispose();
+handle = sm.EnterState<SkillCast>(State.Casting, (prev, trg) =>
+    ApplyBurstEffect(trg.SkillId, trg.Target));
+```
+
+Just swap the handle. No if-chains, no version flags. One Dispose and the old logic is gone.
 
 ---
 

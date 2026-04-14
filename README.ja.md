@@ -181,6 +181,33 @@ var handle2 = sm.EnterState<SkillCast>(State.SkillCast, (prev, trg) =>
 
 ---
 
+**気まぐれな仕様変更**
+
+```csharp
+// 企画者: 「バースト版でお願いします。」
+var handle = sm.EnterState<SkillCast>(State.Casting, (prev, trg) =>
+    ApplyBurstEffect(trg.SkillId, trg.Target));
+
+// 企画者: 「やっぱりDoT版の方がいいかも。」
+handle.Dispose();
+handle = sm.EnterState<SkillCast>(State.Casting, (prev, trg) =>
+    ApplyDotEffect(trg.SkillId, trg.Target));
+
+// 企画者: 「AoEはどうでしょう？」
+handle.Dispose();
+handle = sm.EnterState<SkillCast>(State.Casting, (prev, trg) =>
+    ApplyAoeEffect(trg.SkillId, trg.Target));
+
+// 企画者: 「……やっぱりバーストに戻しましょう。」
+handle.Dispose();
+handle = sm.EnterState<SkillCast>(State.Casting, (prev, trg) =>
+    ApplyBurstEffect(trg.SkillId, trg.Target));
+```
+
+ハンドルを差し替えるだけです。ifチェーンも、バージョンフラグも不要。Disposeの一行で古いロジックは消えます。
+
+---
+
 **昼夜行動パターンを持つモンスターAI** — 複雑な分岐なしにティックを交換
 
 ```csharp

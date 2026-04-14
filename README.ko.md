@@ -181,6 +181,33 @@ var handle2 = sm.EnterState<SkillCast>(State.SkillCast, (prev, trg) =>
 
 ---
 
+**변덕스러운 기획 변동사항**
+
+```csharp
+// 기획자: "버스트 버전으로 해주세요."
+var handle = sm.EnterState<SkillCast>(State.Casting, (prev, trg) =>
+    ApplyBurstEffect(trg.SkillId, trg.Target));
+
+// 기획자: "역시 DoT 버전이 나을 것 같아요."
+handle.Dispose();
+handle = sm.EnterState<SkillCast>(State.Casting, (prev, trg) =>
+    ApplyDotEffect(trg.SkillId, trg.Target));
+
+// 기획자: "음... AoE는 어떨까요?"
+handle.Dispose();
+handle = sm.EnterState<SkillCast>(State.Casting, (prev, trg) =>
+    ApplyAoeEffect(trg.SkillId, trg.Target));
+
+// 기획자: "...역시 버스트로 돌아가죠."
+handle.Dispose();
+handle = sm.EnterState<SkillCast>(State.Casting, (prev, trg) =>
+    ApplyBurstEffect(trg.SkillId, trg.Target));
+```
+
+핸들만 갈아끼면 됩니다. if 체인도, 버전 플래그도 필요 없어요. Dispose 한 줄이면 이전 로직은 사라집니다.
+
+---
+
 **낮/밤 행동 패턴을 가진 몬스터 AI** — 복잡한 분기 없이 틱 교체
 
 ```csharp
