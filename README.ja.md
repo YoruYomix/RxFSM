@@ -76,42 +76,6 @@ var sm = RxFSM.Create<CharState>(CharState.Idle)
 
 ---
 
-**複雑な攻撃クールダウン** — 複雑な条件も一目瞭然
-
-```csharp
-sm.EnterStateAsync<AttackInput>(State.Attack, async (prev, trg, ct) =>
-{
-    await UniTask.WaitUntil(() => isGrounded, cancellationToken: ct);
-    await UniTask.WaitWhile(() => isAttacking, cancellationToken: ct);
-
-    if(trg.Power > 30 && prev == State.Idle)
-        await UniTask.WaitUntil(() => atkCooldown <= 0, cancellationToken: ct);
-
-    await animationCompletionSource.Task;
-
-}, AsyncOperation.Throttle);
-```
-
-`AsyncOperation.Throttle` は、上記の条件がすべて満たされるまで State.Attack からの遷移を防ぎます。
-
----
-
----
-
-**コアパッケージのインストール** — Package Manager → **+** → **Add package from git URL**:
-
-```
-https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm
-```
-
-または `Packages/manifest.json` に直接追加:
-
-```json
-"com.yoruyomix.rxfsm": "https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm"
-```
-
----
-
 **詠唱中に妨害された魔法使い** — キャンセル時にマナ半分還元.
 
 ```csharp
@@ -134,6 +98,42 @@ sm.EnterStateAsync<CastSpell>(State.Casting, async (prev, trg, ct) =>
 ```
 
 `AsyncOperation.Switch` は別の状態に遷移するとき、**キャンセルトークン**を自動的に発動します。
+
+---
+
+---
+
+**コアパッケージのインストール** — Package Manager → **+** → **Add package from git URL**:
+
+```
+https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm
+```
+
+または `Packages/manifest.json` に直接追加:
+
+```json
+"com.yoruyomix.rxfsm": "https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm"
+```
+
+---
+
+**複雑な攻撃クールダウン** — 複雑な条件も一目瞭然
+
+```csharp
+sm.EnterStateAsync<AttackInput>(State.Attack, async (prev, trg, ct) =>
+{
+    await UniTask.WaitUntil(() => isGrounded, cancellationToken: ct);
+    await UniTask.WaitWhile(() => isAttacking, cancellationToken: ct);
+
+    if(trg.Power > 30 && prev == State.Idle)
+        await UniTask.WaitUntil(() => atkCooldown <= 0, cancellationToken: ct);
+
+    await animationCompletionSource.Task;
+
+}, AsyncOperation.Throttle);
+```
+
+`AsyncOperation.Throttle` は、上記の条件がすべて満たされるまで State.Attack からの遷移を防ぎます。
 
 ---
 

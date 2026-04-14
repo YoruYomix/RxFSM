@@ -76,42 +76,6 @@ var sm = RxFSM.Create<CharState>(CharState.Idle)
 
 ---
 
-**복잡한 공격 쿨다운** — 복잡한 조건도 한눈에
-
-```csharp
-sm.EnterStateAsync<AttackInput>(State.Attack, async (prev, trg, ct) =>
-{
-    await UniTask.WaitUntil(() => isGrounded, cancellationToken: ct);
-    await UniTask.WaitWhile(() => isAttacking, cancellationToken: ct);
-
-    if(trg.Power > 30 && prev == State.Idle)
-        await UniTask.WaitUntil(() => atkCooldown <= 0, cancellationToken: ct);
-
-    await animationCompletionSource.Task;
-
-}, AsyncOperation.Throttle);
-```
-
-`AsyncOperation.Throttle`은 위 조건이 모두 충족될 때까지 State.Attack에서의 전이를 막습니다.
-
----
-
----
-
-**코어 패키지 설치** — Package Manager → **+** → **Add package from git URL**:
-
-```
-https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm
-```
-
-또는 `Packages/manifest.json`에 직접 추가:
-
-```json
-"com.yoruyomix.rxfsm": "https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm"
-```
-
----
-
 **영창 도중 방해받는 마법사** — 취소 시 마나 절반 환불.
 
 ```csharp
@@ -134,6 +98,42 @@ sm.EnterStateAsync<CastSpell>(State.Casting, async (prev, trg, ct) =>
 ```
 
 `AsyncOperation.Switch`는 다른 상태로 전이할 때 **캔슬레이션 토큰**을 자동으로 발동합니다.
+
+---
+
+---
+
+**코어 패키지 설치** — Package Manager → **+** → **Add package from git URL**:
+
+```
+https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm
+```
+
+또는 `Packages/manifest.json`에 직접 추가:
+
+```json
+"com.yoruyomix.rxfsm": "https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm"
+```
+
+---
+
+**복잡한 공격 쿨다운** — 복잡한 조건도 한눈에
+
+```csharp
+sm.EnterStateAsync<AttackInput>(State.Attack, async (prev, trg, ct) =>
+{
+    await UniTask.WaitUntil(() => isGrounded, cancellationToken: ct);
+    await UniTask.WaitWhile(() => isAttacking, cancellationToken: ct);
+
+    if(trg.Power > 30 && prev == State.Idle)
+        await UniTask.WaitUntil(() => atkCooldown <= 0, cancellationToken: ct);
+
+    await animationCompletionSource.Task;
+
+}, AsyncOperation.Throttle);
+```
+
+`AsyncOperation.Throttle`은 위 조건이 모두 충족될 때까지 State.Attack에서의 전이를 막습니다.
 
 ---
 

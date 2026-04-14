@@ -76,43 +76,6 @@ var sm = RxFSM.Create<CharState>(CharState.Idle)
 
 ---
 
-**More complex attack cooldown** — Complex Conditions at a Glance
-
-```csharp
-sm.EnterStateAsync<AttackInput>(State.Attack, async (prev, trg, ct) =>
-{
-    await UniTask.WaitUntil(() => isGrounded, cancellationToken: ct);
-    await UniTask.WaitWhile(() => isAttacking, cancellationToken: ct);
-    
-    if(trg.Power > 30 && prev == State.Idle)
-        await UniTask.WaitUntil(() => atkCooldown <= 0, cancellationToken: ct);
-	    
-    await animationCompletionSource.Task;
-    
-}, AsyncOperation.Throttle); 
-```
-
-`AsyncOperation.Throttle` Prevents transition from State.Attack until all conditions above are met.
-
-
----
-
----
-
-**Install the core package** via Package Manager → **+** → **Add package from git URL**:
-
-```
-https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm
-```
-
-Or directly in `Packages/manifest.json`:
-
-```json
-"com.yoruyomix.rxfsm": "https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm"
-```
-
----
-
 **Wizard interrupted mid-cast** — spell cancelled, half mana refunded.
 
 ```csharp
@@ -135,6 +98,43 @@ sm.EnterStateAsync<CastSpell>(State.Casting, async (prev, trg, ct) =>
 ```
 
 `AsyncOperation.Switch` automatically triggers the **cancellation token** when transitioning to a different state.
+
+---
+
+---
+
+**Install the core package** via Package Manager → **+** → **Add package from git URL**:
+
+```
+https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm
+```
+
+Or directly in `Packages/manifest.json`:
+
+```json
+"com.yoruyomix.rxfsm": "https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm"
+```
+
+---
+
+**More complex attack cooldown** — Complex Conditions at a Glance
+
+```csharp
+sm.EnterStateAsync<AttackInput>(State.Attack, async (prev, trg, ct) =>
+{
+    await UniTask.WaitUntil(() => isGrounded, cancellationToken: ct);
+    await UniTask.WaitWhile(() => isAttacking, cancellationToken: ct);
+    
+    if(trg.Power > 30 && prev == State.Idle)
+        await UniTask.WaitUntil(() => atkCooldown <= 0, cancellationToken: ct);
+	    
+    await animationCompletionSource.Task;
+    
+}, AsyncOperation.Throttle); 
+```
+
+`AsyncOperation.Throttle` Prevents transition from State.Attack until all conditions above are met.
+
 
 ---
 
