@@ -1,0 +1,23 @@
+{
+  "name": "com.yoruyomix.rxfsm.r3",
+  "version": "1.0.0",
+  "displayName": "RxFSM - R3",
+  "description": "R3 extension for RxFSM. Provides Observable bridging via System.IObservable<T>.",
+  "unity": "2022.3",
+  "author": {
+    "name": "YoruYomix",
+    "url": "https://github.com/YoruYomix"
+  },
+  "license": "MIT",
+  "keywords": [
+    "fsm",
+    "state-machine",
+    "r3",
+    "reactive",
+    "unity"
+  ],
+  "dependencies": {
+    "com.yoruyomix.rxfsm": "1.0.0",
+    "com.cysharp.r3": "1.0.0"
+  }
+}

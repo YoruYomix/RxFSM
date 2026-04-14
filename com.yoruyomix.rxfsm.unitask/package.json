@@ -1,0 +1,22 @@
+{
+  "name": "com.yoruyomix.rxfsm.unitask",
+  "version": "1.0.0",
+  "displayName": "RxFSM - UniTask",
+  "description": "UniTask extension for RxFSM. Provides ToUniTask() for awaiting state transitions.",
+  "unity": "2022.3",
+  "author": {
+    "name": "YoruYomix",
+    "url": "https://github.com/YoruYomix"
+  },
+  "license": "MIT",
+  "keywords": [
+    "fsm",
+    "state-machine",
+    "unitask",
+    "unity"
+  ],
+  "dependencies": {
+    "com.yoruyomix.rxfsm": "1.0.0",
+    "com.cysharp.unitask": "2.0.0"
+  }
+}

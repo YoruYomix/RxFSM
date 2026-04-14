@@ -1,9 +1,9 @@
 {
     "name": "YoruYomix.RxFSM.UniTask",
-    "rootNamespace": "",
+    "rootNamespace": "RxFSM",
     "references": [
-        "GUID:6853525c37e3c4175bb6cfdf1aec97dc",
-        "GUID:f51ebe6a0ceec4240a699833d6309b23"
+        "YoruYomix.RxFSM",
+        "UniTask"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
