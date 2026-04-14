@@ -242,6 +242,41 @@ bossSm   .UseGlobalFilter(invFilter);
 
 ---
 
+**Mana check** — per-transition filter, so only skill transitions pay the cost.
+
+```csharp
+public class ManaFilter : ITransitionFilter
+{
+    private readonly ManaPool _mana;
+    public ManaFilter(ManaPool mana) { _mana = mana; }
+
+    public async ValueTask Invoke(
+        object trigger, TransitionContext ctx,
+        Func<ValueTask> next, CancellationToken ct)
+    {
+        if (trigger is SkillCast skill && !_mana.IsSufficient(skill.ManaCost))
+            return; // not enough mana — block silently
+
+        await next();
+    }
+}
+```
+
+```csharp
+var sm = FSM.Create<CharState>(CharState.Idle)
+    .UseGlobalFilter(new LogFilter())             // runs on every transition — logging, analytics, etc.
+    .AddTransition<SkillCast>(CharState.Idle,   CharState.Casting)
+        .UseFilter(new ManaFilter(_mana))         // runs only on this transition
+        .UseFilter(new CooldownFilter(_cooldown)) // multiple per-transition filters chain in order
+    .AddTransition<AttackInput>(CharState.Idle, CharState.Attack)
+        // no mana filter here — attack costs nothing
+    .Build();
+```
+
+`UseGlobalFilter` runs on every transition — ideal for cross-cutting concerns like logging or telemetry. `UseFilter` runs only on the transition it follows, keeping expensive or context-specific checks out of the global path.
+
+---
+
 **Same trigger, different outcomes** — branching on HP.
 
 ```csharp
