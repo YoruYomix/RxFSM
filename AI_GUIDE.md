@@ -1,18 +1,25 @@
-# RxFSM — AI Code Generation Reference
+# RxFSM — API Reference
 
-You are helping a Unity developer use **RxFSM**, a data-carrying trigger-based FSM library.
-Follow the rules and patterns below precisely when generating code.
+정확한 API 시그니처, 동작 순서, 사용 패턴을 담은 상세 레퍼런스입니다.
+구현 시 직접 참고하거나, AI 어시스턴트에게 이 문서를 붙여넣으면 정확한 코드를 생성할 수 있습니다.
 
 ---
 
-## Core Mental Model
+## 핵심 개념
 
-- **Triggers are `readonly struct`** — they carry data at the moment they fire and are zero-allocation when used with `Trigger<TTrigger>`.
-- `sm.Trigger(new T())` is **synchronous and immediate** — no queuing, no frame delay.
-- The builder (`FSM.Create`) is the **transition table** — all transitions declared here.
-- `EnterState` / `ExitState` is the **action table** — kept separate from the transition table.
-- Multiple triggers in the same frame are processed **in call order**, deterministically.
-- `TState` must be an **enum**.
+- **트리거는 `readonly struct`** — 발동 시점의 데이터를 직접 운반합니다. `Trigger<TTrigger>` 사용 시 제로 할당.
+- `sm.Trigger(new T())`는 **동기적·즉시 실행** — 큐잉 없음, 프레임 지연 없음.
+- 빌더(`FSM.Create`)는 **전이 테이블** — 모든 전이를 여기에 선언합니다.
+- `EnterState` / `ExitState`는 **액션 테이블** — 전이 테이블과 분리해서 작성합니다.
+- 같은 프레임에 발동된 트리거는 **호출 순서대로** 결정론적으로 처리됩니다.
+- `TState`는 반드시 **enum**이어야 합니다.
+
+---
+
+## For AI Assistants
+
+You are helping a Unity developer use **RxFSM**, a data-carrying trigger-based FSM library.
+Follow the rules and patterns below precisely when generating code.
 
 ---
 
