@@ -23,6 +23,7 @@ namespace RxFSM
 
         // State+Trigger filtered
         private Dictionary<(TState, Type), List<Action<TState, object>>> _onEnterStateByTrigger;
+        private Dictionary<(TState, Type), List<Action<TState, object>>> _onExitStateByTrigger;
 
         // ── EnterState overloads ─────────────────────────────────────────────────
 
@@ -69,6 +70,18 @@ namespace RxFSM
             return Disposable.Create(() => list.Remove(callback));
         }
 
+        public IDisposable EnterState<TTrigger>(TState targetState, Action<TState, TTrigger> callback)
+            where TTrigger : struct
+        {
+            _onEnterStateByTrigger ??= new Dictionary<(TState, Type), List<Action<TState, object>>>();
+            var key = (targetState, typeof(TTrigger));
+            if (!_onEnterStateByTrigger.TryGetValue(key, out var list))
+                _onEnterStateByTrigger[key] = list = new List<Action<TState, object>>();
+            Action<TState, object> wrapper = (prev, trg) => callback(prev, (TTrigger)trg);
+            list.Add(wrapper);
+            return Disposable.Create(() => list.Remove(wrapper));
+        }
+
         // ── ExitState overloads ──────────────────────────────────────────────────
 
         public IDisposable ExitState(Action<TState, TState> callback)
@@ -101,6 +114,18 @@ namespace RxFSM
                 _onExitByTrigger[key] = list = new List<Action<TState, TState, object>>();
             list.Add(callback);
             return Disposable.Create(() => list.Remove(callback));
+        }
+
+        public IDisposable ExitState<TTrigger>(TState targetState, Action<TState, TTrigger> callback)
+            where TTrigger : struct
+        {
+            _onExitStateByTrigger ??= new Dictionary<(TState, Type), List<Action<TState, object>>>();
+            var key = (targetState, typeof(TTrigger));
+            if (!_onExitStateByTrigger.TryGetValue(key, out var list))
+                _onExitStateByTrigger[key] = list = new List<Action<TState, object>>();
+            Action<TState, object> wrapper = (next, trg) => callback(next, (TTrigger)trg);
+            list.Add(wrapper);
+            return Disposable.Create(() => list.Remove(wrapper));
         }
 
         // ── FireEnter ────────────────────────────────────────────────────────────
@@ -183,6 +208,14 @@ namespace RxFSM
                         var c = cb;
                         SafeInvoke(() => c(cur, next, trg), trg, CallbackType.ExitState);
                     }
+
+                if (_onExitStateByTrigger != null &&
+                    _onExitStateByTrigger.TryGetValue((cur, trigType), out var stTrigList))
+                    foreach (var cb in stTrigList.ToArray())
+                    {
+                        var c = cb;
+                        SafeInvoke(() => c(next, trg), trg, CallbackType.ExitState);
+                    }
             }
         }
 
@@ -199,6 +232,7 @@ namespace RxFSM
             _onEnterByTrigger?.Clear();
             _onExitByTrigger?.Clear();
             _onEnterStateByTrigger?.Clear();
+            _onExitStateByTrigger?.Clear();
         }
     }
 }

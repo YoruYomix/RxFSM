@@ -139,15 +139,15 @@ sm.EnterStateAsync<CastSpell>(State.Casting, async (prev, trg, ct) =>
 ```csharp
 dialogueSM.EnterStateAsync<PlayDialogue>(State.Play, async (prev, trg, ct) =>
 {
-    try
-    {
-        await TypeText(trg.Dialogue, trg.speed ,ct);
-    }
-    finally
-    {
-        text.text = trg.Dialogue;
-        PlayCursorBlink();
-    }
+    try
+    {
+        await TypeText(trg.Dialogue, trg.speed ,ct);
+    }
+    finally
+    {
+        text.text = trg.Dialogue;
+        PlayCursorBlink();
+    }
 }, AsyncOperation.Switch);
 ```
 
@@ -156,19 +156,19 @@ dialogueSM.EnterStateAsync<PlayDialogue>(State.Play, async (prev, trg, ct) =>
 **Skill effects that change depending on the terrain** — replacing the callback itself without complex branching.
 
 ```csharp
-var handle1 = sm.EnterState<SkillCast, State.SkillCast>((prev, trg) =>
+var handle1 = sm.EnterState<SkillCast>(State.SkillCast, (prev, trg) =>
     {
 		UseSkillOnGroundTile(trg.Target, trg.SkillId);
     });
 
 handle1.Dispose(); // No longer receive callbacks
 
-handle1 = sm.EnterState<SkillCast, State.SkillCast>((prev, trg) => 
+handle1 = sm.EnterState<SkillCast>(State.SkillCast, (prev, trg) => 
     {
 		UseSkillOnWaterTile(trg.Target, trg.SkillId);
     });
     
-var handle2 = sm.EnterState<SkillCast, State.SkillCast>((prev, trg) =>  
+var handle2 = sm.EnterState<SkillCast>(State.SkillCast, (prev, trg) =>  
     {
 		WaterTileSkillBonus(trg.Target, trg.SkillId);
     }); // Executes independently of handle1
@@ -213,7 +213,7 @@ Conditions are evaluated directly from trigger data — no external variable loo
 **Reflect Damage** — One Trigger Leads to Another
 
 ```csharp
-sm.EnterState<Damaged, State.Hit>((cur, prev, trg) =>
+sm.EnterState<Damaged>(State.Hit, (prev, trg) =>
 {
     if (hasReflectBuff)
         trg.attacker.sm.Trigger(new Hit(
@@ -234,7 +234,7 @@ Delivering a trigger containing who attacked, how, and with how much damage
 ```csharp
 public readonly record struct ChainLightning(float damage, int remainingChains);
 
-sm.EnterState<ChainLightning, State.Hit>((cur, prev, trg) =>
+sm.EnterState<ChainLightning>(State.Hit, (prev, trg) =>
 {
     hp -= trg.damage;
     SpawnLightningEffect();
@@ -255,16 +255,16 @@ sm.EnterState<ChainLightning, State.Hit>((cur, prev, trg) =>
 **Boss Defeated** — Seamless Cleanup
 
 ```csharp
-systemSm.ExitState<BossDefeated, GameState.BossFight>((next, trg) =>
+systemSm.ExitState<BossDefeated>(GameState.BossFight, (next, trg) =>
 {
-    HideBossHealthBar();
+    HideBossHealthBar();
 
-    StopBossBGM();
+    StopBossBGM();
 
-    bossManager.Cleanup();
-    
-    assetManager.Unload(trg.bossID);
-	assetManager.Unload(trg.bossRoomID);
+    bossManager.Cleanup();
+
+    assetManager.Unload(trg.bossID);
+    assetManager.Unload(trg.bossRoomID);
 });
 ```
 
@@ -497,17 +497,17 @@ sm.OnError = (ex, trg, type) =>
 {
 	if (ex is OperationCanceledException) return;
 	
-    if (ex is ArgumentException || ex is NullReferenceException) 
-    { 
-	    Debug.LogWarning($"[FSM] {type} | State: {string.Join(" → ", sm.GetActiveStateHierarchy())}, Trigger: {trg}, Exception: {ex}");  
-	    sm.ForceTransitionTo(State.Idle);
-	    return; 
-    }
-    
-    Debug.LogError($"[FSM] {type} | State: {string.Join(" → ", sm.GetActiveStateHierarchy())}, Trigger: {trg}, Exception: {ex}");
-    
-    sm.Dispose();
-    Destroy(gameObject);
+    if (ex is ArgumentException || ex is NullReferenceException) 
+    { 
+	    Debug.LogWarning($"[FSM] {type} | State: {string.Join(" → ", sm.GetActiveStateHierarchy())}, Trigger: {trg}, Exception: {ex}");  
+	    sm.ForceTransitionTo(State.Idle);
+	    return; 
+    }
+    
+    Debug.LogError($"[FSM] {type} | State: {string.Join(" → ", sm.GetActiveStateHierarchy())}, Trigger: {trg}, Exception: {ex}");
+    
+    sm.Dispose();
+    Destroy(gameObject);
 };
 ```
 
@@ -556,7 +556,7 @@ sm.Trigger(new AttackInput());
 ### React to states
 
 ```csharp
-sm.EnterState<Damaged, State.Hit>((prev, trg) =>
+sm.EnterState<Damaged>(State.Hit, (prev, trg) =>
 {
     hp -= trg.amount;
     SpawnEffect(trg.element, trg.direction);

@@ -120,19 +120,27 @@ sm.EnterState<Damaged>((TState cur, TState prev, object trg) =>
 });
 
 // State + Trigger filtered — fires only when entering targetState via TTrigger
+// trg is object — cast manually:
 sm.EnterState<Damaged>(S.Hit, (TState prev, object trg) =>
 {
     var d = (Damaged)trg;
     hp -= d.amount;
 });
 
+// State + Trigger filtered — typed trg (no cast needed):
+sm.EnterState<Damaged>(S.Hit, (TState prev, Damaged trg) =>
+{
+    hp -= trg.amount;
+    SpawnEffect(trg.element, trg.direction);
+});
+
 // ── ExitState ──────────────────────────────────────────────────────────────────
-// Mirrors EnterState. Note: no State+Trigger combo overload for ExitState.
 
 sm.ExitState((TState cur, TState next) => { });
 sm.ExitState((TState cur, TState next, object trg) => { });
-sm.ExitState(S.Idle, (TState next, object trg) => { });     // fires when leaving S.Idle
-sm.ExitState<Damaged>((TState cur, TState next, object trg) => { });
+sm.ExitState(S.BossFight, (TState next, object trg) => { });         // state-filtered, trg is object
+sm.ExitState<Damaged>((TState cur, TState next, object trg) => { }); // trigger-type-filtered
+sm.ExitState<BossDefeated>(S.BossFight, (TState next, BossDefeated trg) => { }); // state+trigger filtered, typed trg
 ```
 
 **All callbacks return `IDisposable`.** Dispose the handle to unregister.
@@ -403,11 +411,15 @@ var characterFsm = FSM.Create<CharacterState>(CharacterState.Alive)
 
 **History:** child FSMs always retain their internal state. Returning to a parent state resumes the child where it left off.
 
-**Transition phases (per trigger):**
-1. **Evaluate** — match transitions, parent → child
-2. **Exit** — `ExitState` callbacks, parent → child
-3. **State change** — update enums, parent → child
-4. **Enter** — `EnterState` callbacks, parent → child
+**Transition phases (per trigger) — exact order within each layer:**
+1. **Tick cut** — active `TickState` loops stop (STAGE_TICKS unregistered), parent → child
+2. **Cancellation** — guards reset, async CTS cancelled, active `Interrupt` cancelled, parent → child
+3. **Exit** — `ExitState` callbacks fire, parent → child (deepest child exits last)
+4. **State change** — `_current` enums updated, parent → child
+5. **Enter** — `EnterState` / `EnterStateAsync` callbacks fire, parent → child
+6. **Tick start** — new `TickState` loops register (first tick fires next frame), parent → child
+
+Triggers queued during phases 1–6 (e.g. from an `ExitState` callback) are processed **after** the full 6-phase sequence completes.
 
 **Hierarchical deactivation — propagates recursively to all descendants:**
 ```csharp
@@ -570,10 +582,13 @@ battleFsm.EnterStateAsync<UltimateActivated>(BattleState.UltimateCutscene,
 | `EnterState(cur, prev)` | Unfiltered, every entry. |
 | `EnterState(cur, prev, trg)` | Unfiltered with trigger (`object`). |
 | `EnterState(targetState, (prev, trg) => {})` | State-filtered. |
-| `EnterState<TTrigger>((cur, prev, trg) => {})` | Trigger-type-filtered (any state). |
-| `EnterState<TTrigger>(targetState, (prev, trg) => {})` | State + trigger filtered. |
-| `ExitState(cur, next)` | Unfiltered exit. No State+Trigger combo overload. |
-| `ExitState(targetState, (next, trg) => {})` | State-filtered exit — fires when leaving `targetState`. |
+| `EnterState<TTrigger>((cur, prev, trg) => {})` | Trigger-type-filtered (any state), `trg` is `object`. |
+| `EnterState<TTrigger>(targetState, (prev, trg) => {})` | State + trigger filtered, `trg` is `object`. |
+| `EnterState<TTrigger>(targetState, (prev, TTrigger trg) => {})` | State + trigger filtered, `trg` is typed `TTrigger`. |
+| `ExitState(cur, next)` | Unfiltered exit. |
+| `ExitState(targetState, (next, trg) => {})` | State-filtered exit — `trg` is `object`. |
+| `ExitState<TTrigger>((cur, next, trg) => {})` | Trigger-type-filtered exit. |
+| `ExitState<TTrigger>(targetState, (next, trg) => {})` | State + trigger filtered, `trg` is typed `TTrigger`. |
 | `TickState(state, (prev, trg) => {})` | Per-frame at STAGE_TICKS. First tick is next frame after entry. `prev`/`trg` frozen at entry. |
 | `EnterStateAsync(callback, policy)` | Async callback. Policies: `Throttle` / `Switch` / `Parallel` / `Drop`. |
 | `ThrottleState(state, t)` | Block exit for `t` seconds. Last pending trigger fires when timer expires. |
