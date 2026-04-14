@@ -210,7 +210,7 @@ _sm.Interrupt(new DashInterrupt(sm: _sm, delay: 0.5f, speed: 20));
 
 ---
 
-**무적프레임** — 한번 만들어두면 여럿에게 재사용 가능.
+**Invincibility frames** — define once, reuse across any number of characters.
 
 ```csharp
 public class InvincibleFilter : ITransitionFilter
@@ -220,15 +220,15 @@ public class InvincibleFilter : ITransitionFilter
         Func<ValueTask> next, CancellationToken ct)
     {
         if (trigger is Damaged && ctx.From == CharState.Hit)
-            return; // 무적 구간 — 전이 차단
+            return; // invincible window — block the transition
 
-        await next(); // 그 외는 통과
+        await next(); // everything else passes through
     }
 }
 ```
 
 ```csharp
-// 캐릭터마다 동일한 필터 인스턴스를 재사용
+// share the same filter instance across characters
 var invFilter = new InvincibleFilter();
 
 playerSm .UseGlobalFilter(invFilter);
