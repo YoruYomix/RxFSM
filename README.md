@@ -185,98 +185,6 @@ handle = sm.TickState<PatrolCommand, Monster.Patrol>((prev, trg) =>
 
 ---
 
-**Dash Interrupt** — Per-state reactions, runtime-tunable, without touching the FSM.
-
-```csharp
-public readonly struct DashInterrupt : IInterrupt
-{
-    public async ValueTask InvokeAsync(TState currentState, CancellationToken ct)
-    {
-        if (currentState is CharState.Channeling)
-        {
-            await UniTask.Delay(TimeSpan.FromSeconds(_delay), cancellationToken: ct);
-        }
-
-        if (currentState is CharState.Stunned) return;
-
-        _sm.Trigger(new DashStart(_speed));
-    }
-}
-```
-
-```csharp
-_sm.Interrupt(new DashInterrupt(sm: _sm, delay: 0.5f, speed: 20));
-```
-
-`Interrupt` reads the current state and branches accordingly — without touching the FSM definition. If another interrupt fires mid-await, `ct` cancels automatically.
-
----
-
-**Invincibility frames** — define once, reuse across any number of characters.
-
-```csharp
-public class InvincibleFilter : ITransitionFilter
-{
-    public async ValueTask Invoke(
-        object trigger, TransitionContext ctx,
-        Func<ValueTask> next, CancellationToken ct)
-    {
-        if (trigger is Damaged && ctx.From == CharState.Hit)
-            return; // invincible window — block the transition
-
-        await next(); // everything else passes through
-    }
-}
-```
-
-```csharp
-// share the same filter instance across characters
-var invFilter = new InvincibleFilter();
-
-playerSm .UseGlobalFilter(invFilter);
-enemySm  .UseGlobalFilter(invFilter);
-bossSm   .UseGlobalFilter(invFilter);
-```
-
-`UseGlobalFilter` applies middleware to every transition on that FSM. The filter decides whether to call `next()` (allow) or return without calling it (block). Stateless filters can be shared across as many FSMs as needed.
-
----
-
-**Mana check** — per-transition filter, so only skill transitions pay the cost.
-
-```csharp
-public class ManaFilter : ITransitionFilter
-{
-    private readonly ManaPool _mana;
-    public ManaFilter(ManaPool mana) { _mana = mana; }
-
-    public async ValueTask Invoke(
-        object trigger, TransitionContext ctx,
-        Func<ValueTask> next, CancellationToken ct)
-    {
-        if (trigger is SkillCast skill && !_mana.IsSufficient(skill.ManaCost))
-            return; // not enough mana — block silently
-
-        await next();
-    }
-}
-```
-
-```csharp
-var sm = FSM.Create<CharState>(CharState.Idle)
-    .UseGlobalFilter(new LogFilter())             // runs on every transition — logging, analytics, etc.
-    .AddTransition<SkillCast>(CharState.Idle,   CharState.Casting)
-        .UseFilter(new ManaFilter(_mana))         // runs only on this transition
-        .UseFilter(new CooldownFilter(_cooldown)) // multiple per-transition filters chain in order
-    .AddTransition<AttackInput>(CharState.Idle, CharState.Attack)
-        // no mana filter here — attack costs nothing
-    .Build();
-```
-
-`UseGlobalFilter` runs on every transition — ideal for cross-cutting concerns like logging or telemetry. `UseFilter` runs only on the transition it follows, keeping expensive or context-specific checks out of the global path.
-
----
-
 **Same trigger, different outcomes** — branching on HP.
 
 ```csharp
@@ -376,6 +284,98 @@ iconSm.EnterState<CharacterState.Awakened>((prev, trg) =>
     thumbnail.ShowAwakenedCharacter();
 });
 ```
+
+---
+
+**Dash Interrupt** — Per-state reactions, runtime-tunable, without touching the FSM.
+
+```csharp
+public readonly struct DashInterrupt : IInterrupt
+{
+    public async ValueTask InvokeAsync(TState currentState, CancellationToken ct)
+    {
+        if (currentState is CharState.Channeling)
+        {
+            await UniTask.Delay(TimeSpan.FromSeconds(_delay), cancellationToken: ct);
+        }
+
+        if (currentState is CharState.Stunned) return;
+
+        _sm.Trigger(new DashStart(_speed));
+    }
+}
+```
+
+```csharp
+_sm.Interrupt(new DashInterrupt(sm: _sm, delay: 0.5f, speed: 20));
+```
+
+`Interrupt` reads the current state and branches accordingly — without touching the FSM definition. If another interrupt fires mid-await, `ct` cancels automatically.
+
+---
+
+**Invincibility frames** — define once, reuse across any number of characters.
+
+```csharp
+public class InvincibleFilter : ITransitionFilter
+{
+    public async ValueTask Invoke(
+        object trigger, TransitionContext ctx,
+        Func<ValueTask> next, CancellationToken ct)
+    {
+        if (trigger is Damaged && ctx.From == CharState.Hit)
+            return; // invincible window — block the transition
+
+        await next(); // everything else passes through
+    }
+}
+```
+
+```csharp
+// share the same filter instance across characters
+var invFilter = new InvincibleFilter();
+
+playerSm .UseGlobalFilter(invFilter);
+enemySm  .UseGlobalFilter(invFilter);
+bossSm   .UseGlobalFilter(invFilter);
+```
+
+`UseGlobalFilter` applies middleware to every transition on that FSM. The filter decides whether to call `next()` (allow) or return without calling it (block). Stateless filters can be shared across as many FSMs as needed.
+
+---
+
+**Mana check** — per-transition filter, so only skill transitions pay the cost.
+
+```csharp
+public class ManaFilter : ITransitionFilter
+{
+    private readonly ManaPool _mana;
+    public ManaFilter(ManaPool mana) { _mana = mana; }
+
+    public async ValueTask Invoke(
+        object trigger, TransitionContext ctx,
+        Func<ValueTask> next, CancellationToken ct)
+    {
+        if (trigger is SkillCast skill && !_mana.IsSufficient(skill.ManaCost))
+            return; // not enough mana — block silently
+
+        await next();
+    }
+}
+```
+
+```csharp
+var sm = FSM.Create<CharState>(CharState.Idle)
+    .UseGlobalFilter(new LogFilter())             // runs on every transition — logging, analytics, etc.
+    .AddTransition<SkillCast>(CharState.Idle,   CharState.Casting)
+        .UseFilter(new ManaFilter(_mana))         // runs only on this transition
+        .UseFilter(new CooldownFilter(_cooldown)) // multiple per-transition filters chain in order
+    .AddTransition<AttackInput>(CharState.Idle, CharState.Attack)
+        // no mana filter here — attack costs nothing
+    .Build();
+```
+
+`UseGlobalFilter` runs on every transition — ideal for cross-cutting concerns like logging or telemetry. `UseFilter` runs only on the transition it follows, keeping expensive or context-specific checks out of the global path.
 
 ---
 
