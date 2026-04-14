@@ -515,12 +515,6 @@ sm.OnError = (ex, trg, type) =>
 
 ---
 
-**AI 코드 생성 지원**
-
-별도의 `AI용 API 가이드`를 제공합니다. Claude, Gemini, ChatGPT에 붙여넣어 사용하세요.
-
----
-
 ## 빠른 시작
 
 ### 트리거 정의

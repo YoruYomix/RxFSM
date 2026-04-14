@@ -517,12 +517,6 @@ sm.OnError = (ex, trg, type) =>
 
 ---
 
-**AI-powered code generation support**
-
-provide a separate `API guide for AI`. Copy and paste it to your Claude, Gemini, or ChatGPT.
-
----
-
 ## Quick Start
 
 ### Define triggers
