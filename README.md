@@ -623,7 +623,7 @@ var sm = RxFSM.Create<GameState>(GameState.Title)
     .AddTransition<Retry>(     from: GameState.GameOver, to: GameState.Title)
     .Build();
 
-sm.EnterState<GameState.Playing>((prev, trg) =>
+sm.EnterState(GameState.Playing, (prev, trg) =>
 {
 	if (trg is GameStart gameStart)
 		sceneManager.Load(gameStart.id);
