@@ -1,0 +1,17 @@
+{
+    "name": "YoruYomix.RxFSM.R3",
+    "rootNamespace": "",
+    "references": [
+        "GUID:6853525c37e3c4175bb6cfdf1aec97dc",
+        "GUID:77221876cc6b8244180b96e320b1bcd4"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
