@@ -514,13 +514,13 @@ provide a separate `API guide for AI`. Copy and paste it to your Claude, Gemini,
 Open **Window → Package Manager**, click **+** → **Add package from git URL**, and enter:
 
 ```
-https://github.com/YoruYomix/RxFSM.git?path=Packages/RxFSM/com.yoruyomix.rxfsm
+https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm
 ```
 
 Or add directly to `Packages/manifest.json`:
 
 ```json
-"com.yoruyomix.rxfsm": "https://github.com/YoruYomix/RxFSM.git?path=Packages/RxFSM/com.yoruyomix.rxfsm"
+"com.yoruyomix.rxfsm": "https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm"
 ```
 
 ---
@@ -530,7 +530,7 @@ Or add directly to `Packages/manifest.json`:
 Requires [UniTask](https://github.com/Cysharp/UniTask) to be installed first.
 
 ```
-https://github.com/YoruYomix/RxFSM.git?path=Packages/RxFSM/com.yoruyomix.rxfsm.unitask
+https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm.unitask
 ```
 
 Adds `ToUniTask(state, ct)` for awaiting state transitions.
@@ -542,7 +542,7 @@ Adds `ToUniTask(state, ct)` for awaiting state transitions.
 Requires [R3](https://github.com/Cysharp/R3) to be installed first.
 
 ```
-https://github.com/YoruYomix/RxFSM.git?path=Packages/RxFSM/com.yoruyomix.rxfsm.r3
+https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm.r3
 ```
 
 Adds `Connect(IObservable<T>)` for bridging R3 / UniRx streams into the FSM.
