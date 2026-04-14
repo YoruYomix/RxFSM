@@ -62,20 +62,6 @@ var sm = RxFSM.Create<CharState>(CharState.Idle)
 
 ---
 
-**코어 패키지 설치** — Package Manager → **+** → **Add package from git URL**:
-
-```
-https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm
-```
-
-또는 `Packages/manifest.json`에 직접 추가:
-
-```json
-"com.yoruyomix.rxfsm": "https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm"
-```
-
----
-
 **공격 쿨다운** — 한 줄로.
 
 ```csharp
@@ -107,6 +93,22 @@ sm.EnterStateAsync<AttackInput>(State.Attack, async (prev, trg, ct) =>
 ```
 
 `AsyncOperation.Throttle`은 위 조건이 모두 충족될 때까지 State.Attack에서의 전이를 막습니다.
+
+---
+
+---
+
+**코어 패키지 설치** — Package Manager → **+** → **Add package from git URL**:
+
+```
+https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm
+```
+
+또는 `Packages/manifest.json`에 직접 추가:
+
+```json
+"com.yoruyomix.rxfsm": "https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm"
+```
 
 ---
 

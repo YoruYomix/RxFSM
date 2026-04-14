@@ -62,20 +62,6 @@ var sm = RxFSM.Create<CharState>(CharState.Idle)
 
 ---
 
-**コアパッケージのインストール** — Package Manager → **+** → **Add package from git URL**:
-
-```
-https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm
-```
-
-または `Packages/manifest.json` に直接追加:
-
-```json
-"com.yoruyomix.rxfsm": "https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm"
-```
-
----
-
 **攻撃クールダウン** — 1行で.
 
 ```csharp
@@ -107,6 +93,22 @@ sm.EnterStateAsync<AttackInput>(State.Attack, async (prev, trg, ct) =>
 ```
 
 `AsyncOperation.Throttle` は、上記の条件がすべて満たされるまで State.Attack からの遷移を防ぎます。
+
+---
+
+---
+
+**コアパッケージのインストール** — Package Manager → **+** → **Add package from git URL**:
+
+```
+https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm
+```
+
+または `Packages/manifest.json` に直接追加:
+
+```json
+"com.yoruyomix.rxfsm": "https://github.com/YoruYomix/RxFSM.git?path=com.yoruyomix.rxfsm"
+```
 
 ---
 
