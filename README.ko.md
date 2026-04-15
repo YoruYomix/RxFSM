@@ -1,4 +1,4 @@
-# RxFSM: 트리거가 데이터를 직접 운반하고, 모든 것이 그에 반응하는 Unity 상태 머신.
+# RxFSM: 기획서를 쓰듯이 코딩할 수 있는 라이브러리
 
 [English](README.md) | [日本語](README.ja.md) | [MIT License](LICENSE)
 
@@ -6,11 +6,23 @@
 
 ---
 
-## 이런 것들이 가능해집니다
-
-**공격 속성에 따라 효과 분기** — 트리거 자체가 데이터를 운반하기 때문입니다.
+```csharp
+// 데미지를 받아  // Hit 상태가 됐으니
+sm.EnterState<Damaged>(State.Hit, (prev, trg) =>
+{
+    switch (trg.element)  // 데미지의 속성에 따라
+    {   // 속성 이펙트를 재생하고
+        case Element.Fire: SpawnFireEffect(trg.direction); break;
+        case Element.Ice:  SpawnIceEffect(trg.direction);  break;
+        case Element.Dark: SpawnDarkEffect(trg.direction); break;
+    }
+    hp -= trg.amount;  // 데미지만큼 체력을 깎는다
+});
+```
+**마치 기획서를 쓰듯이 코딩이 가능해집니다**
 
 ```csharp
+// 상태가 바뀌는 원인도 기획서 쓰듯이 짤 수 있어요
 // C# < 10
 public readonly struct Damaged {
     public readonly float amount;
@@ -26,21 +38,6 @@ public readonly struct Damaged {
 // C# 10+
 public readonly record struct Damaged(float amount, Element element, Vector3 direction);
 ```
-
-```csharp
-sm.EnterState<Damaged>((cur, prev, trg) =>
-{
-    switch (trg.element)
-    {
-        case Element.Fire: SpawnFireEffect(trg.direction); break;
-        case Element.Ice:  SpawnIceEffect(trg.direction);  break;
-        case Element.Dark: SpawnDarkEffect(trg.direction); break;
-    }
-    hp -= trg.amount;
-});
-```
-
-기존 방식은 트리거와 데이터를 분리해서 관리해야 했습니다. `lastDamageType` 같은 전역 변수에 저장해두고 타이밍이 맞기를 바라는 방식이었죠.
 
 ---
 

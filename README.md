@@ -1,4 +1,4 @@
-# RxFSM: A state machine for Unity where triggers carry data — and everything reacts to it.
+# RxFSM: A library that lets you code like you're writing a game design document.
 
 [한국어](README.ko.md) | [日本語](README.ja.md) | [MIT License](LICENSE)
 
@@ -6,41 +6,38 @@
 
 ---
 
-## What this makes possible
-
-**Branch effects by attack element** — because the trigger itself carries the data.
+```csharp
+// On taking damage  // We've entered Hit state, so
+sm.EnterState<Damaged>(State.Hit, (prev, trg) =>
+{
+    switch (trg.element)  // Branch on damage element
+    {   // Play the matching effect
+        case Element.Fire: SpawnFireEffect(trg.direction); break;
+        case Element.Ice:  SpawnIceEffect(trg.direction);  break;
+        case Element.Dark: SpawnDarkEffect(trg.direction); break;
+    }
+    hp -= trg.amount;  // Reduce HP by the damage amount
+});
+```
+**You can code just like writing a game design document.**
 
 ```csharp
+// The trigger that causes the state change is just as readable
 // C# < 10
-public readonly struct Damaged{
+public readonly struct Damaged {
     public readonly float amount;
-	public readonly Element element;
+    public readonly Element element;
     public readonly Vector3 direction;
-    
-	public Damaged(float amount, Element element, Vector3 direction) {
-		this.amount = amount; 
-		this.element = element; 
-		this.direction = direction; }
+
+    public Damaged(float amount, Element element, Vector3 direction) {
+        this.amount = amount;
+        this.element = element;
+        this.direction = direction; }
 }
 
 // C# 10+
 public readonly record struct Damaged(float amount, Element element, Vector3 direction);
 ```
-
-```csharp
-sm.EnterState<Damaged>((cur, prev, trg) =>
-{
-    switch (trg.element)
-    {
-        case Element.Fire: SpawnFireEffect(trg.direction); break;
-        case Element.Ice:  SpawnIceEffect(trg.direction);  break;
-        case Element.Dark: SpawnDarkEffect(trg.direction); break;
-    }
-    hp -= trg.amount;
-});
-```
-
-The old way meant keeping triggers and data separate — storing things like `lastDamageType` in a global variable somewhere and hoping the timing worked out.
 
 ---
 

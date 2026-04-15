@@ -1,4 +1,4 @@
-# RxFSM: トリガーがデータを直接運び、すべてがそれに反応するUnityステートマシン.
+# RxFSM: 企画書を書くようにコーディングできるライブラリ
 
 [English](README.md) | [한국어](README.ko.md) | [MIT License](LICENSE)
 
@@ -6,11 +6,23 @@
 
 ---
 
-## これにより可能になること
-
-**攻撃属性による演出の分岐** — トリガー自体がデータを運ぶからです.
+```csharp
+// ダメージを受けて  // Hit状態になったので
+sm.EnterState<Damaged>(State.Hit, (prev, trg) =>
+{
+    switch (trg.element)  // ダメージの属性に応じて
+    {   // 属性エフェクトを再生し
+        case Element.Fire: SpawnFireEffect(trg.direction); break;
+        case Element.Ice:  SpawnIceEffect(trg.direction);  break;
+        case Element.Dark: SpawnDarkEffect(trg.direction); break;
+    }
+    hp -= trg.amount;  // ダメージ分だけ体力を減らす
+});
+```
+**まるで企画書を書くようにコーディングできます。**
 
 ```csharp
+// 状態が変わる原因も、企画書を書くように定義できます
 // C# < 10
 public readonly struct Damaged {
     public readonly float amount;
@@ -26,21 +38,6 @@ public readonly struct Damaged {
 // C# 10+
 public readonly record struct Damaged(float amount, Element element, Vector3 direction);
 ```
-
-```csharp
-sm.EnterState<Damaged>((cur, prev, trg) =>
-{
-    switch (trg.element)
-    {
-        case Element.Fire: SpawnFireEffect(trg.direction); break;
-        case Element.Ice:  SpawnIceEffect(trg.direction);  break;
-        case Element.Dark: SpawnDarkEffect(trg.direction); break;
-    }
-    hp -= trg.amount;
-});
-```
-
-従来の方法では、トリガーとデータを別々に管理する必要がありました。`lastDamageType` のようなグローバル変数に保存して、タイミングが合うことを祈るしかありませんでした。
 
 ---
 
