@@ -84,12 +84,6 @@ sm.EnterStateAsync<CastSpell>(State.Casting, async (prev, trg, ct) =>
 **In-game events like taking damage** can be coded the same way.
 
 ```csharp
-.AddTransitionFromAny<Damaged> // When the "Damaged" event (trigger) occurs
-(
-      _ => !invincible, // if not invincible
-      to: CharState.Hit  // transition to Hit state
-)
-
 public readonly struct Damaged {  // The "Damaged" event requires
     public readonly float amount;   // damage amount
     public readonly Element element;  // element type
@@ -101,6 +95,17 @@ public readonly struct Damaged {  // The "Damaged" event requires
         this.element = element;
         this.direction = direction; }
 }
+
+// Triggers a new "Damaged" event. 50 damage, Fire element, in the direction of the hit
+sm.Trigger(new Damaged(50f, Element.Fire, hitDir));
+
+.AddTransitionFromAny<Damaged> // When a "Damaged" event is triggered
+(
+      _ => !invincible, // If not invincible
+      to: CharState.Hit  // Transition to Hit state
+)
+
+// Don't you find that just reading the code paints a picture of the in-game scene?
 
 // C# 10+ makes it even more concise!
 public readonly record struct Damaged(float amount, Element element, Vector3 direction);
