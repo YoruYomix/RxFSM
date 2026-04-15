@@ -5,22 +5,49 @@
 **[API Reference & Detailed Guide](API_REFERENCE.md)** — Covers exact behavior, execution order, and usage patterns in depth. Handy for developers, and paste it into Claude, Gemini, or ChatGPT for accurate AI-assisted coding.
 
 ---
+**You can code just like writing a game design document.**
 
 ```csharp
-      // On taking damage    // if we've entered Hit state
+public readonly struct Damaged {  // The event "Damaged"
+    public readonly float amount;   // must have an amount,
+    public readonly Element element;  // an element type,
+    public readonly Vector3 direction;  // and a direction.
+// Looks just like a design spec, doesn't it?
+
+      public Damaged(float amount, Element element, Vector3 direction) {
+        this.amount = amount;
+        this.element = element;
+        this.direction = direction; }
+}
+
+// Trigger a new "Damaged" event: 50 damage, Fire element, from the hit direction.
+sm.Trigger(new Damaged(50f, Element.Fire, hitDir));
+
+.AddTransitionFromAny<Damaged> // When the "Damaged" event is triggered
+(
+      _ => !invincible, // if not invincible,
+      to: CharState.Hit  // transition to the Hit state.
+)
+
+// Upon receiving damage // and entering the Hit state:
 sm.EnterState<Damaged>(State.Hit, (prev, trg) =>
 {
-    switch (trg.element)  // Branch on damage element
-    {   // Play Fire, Ice, or Dark effect in this direction
+    switch (trg.element)  // Depending on the damage element,
+    {   // play Fire, Ice, or Dark effects in that direction,
         case Element.Fire: SpawnFireEffect(trg.direction); break;
         case Element.Ice:  SpawnIceEffect(trg.direction);  break;
         case Element.Dark: SpawnDarkEffect(trg.direction); break;
     }
-    hp -= trg.amount;  // Reduce HP by the damage amount
+    hp -= trg.amount;  // and reduce HP by the damage amount.
 });
 
 ```
-**You can code just like writing a game design document.**
+**Can’t you just visualize the in-game scene just by looking at the code?**
+
+```csharp
+// Even more concise with C# 10+!
+public readonly record struct Damaged(float amount, Element element, Vector3 direction);
+```
 
 ---
 
@@ -81,38 +108,6 @@ sm.EnterStateAsync<CastSpell>(State.Casting, async (prev, trg, ct) =>
 
 ---
 
-**In-game events like taking damage** can be coded the same way.
-
-```csharp
-public readonly struct Damaged {  // The "Damaged" event requires
-    public readonly float amount;   // damage amount
-    public readonly Element element;  // element type
-    public readonly Vector3 direction;  // and direction
-	// Reads like a design document, right?
-
-      public Damaged(float amount, Element element, Vector3 direction) {
-        this.amount = amount;
-        this.element = element;
-        this.direction = direction; }
-}
-
-// Triggers a new "Damaged" event. 50 damage, Fire element, in the direction of the hit
-sm.Trigger(new Damaged(50f, Element.Fire, hitDir));
-
-.AddTransitionFromAny<Damaged> // When a "Damaged" event is triggered
-(
-      _ => !invincible, // If not invincible
-      to: CharState.Hit  // Transition to Hit state
-)
-
-// Don't you find that just reading the code paints a picture of the in-game scene?
-
-// C# 10+ makes it even more concise!
-public readonly record struct Damaged(float amount, Element element, Vector3 direction);
-```
-
----
-
 **Attack cooldown** — no complex timer logic, just one line
 
 ```csharp
@@ -124,8 +119,6 @@ var sm = RxFSM.Create<CharState>(CharState.Idle)
 ```
 
 `ThrottleState` handles attack delay, hitstun, and cooldowns all at once.
-
----
 
 ---
 
