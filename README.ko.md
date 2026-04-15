@@ -18,26 +18,9 @@ sm.EnterState<Damaged>(State.Hit, (prev, trg) =>
     }
     hp -= trg.amount;  // 데미지만큼 체력을 깎는다
 });
+
 ```
 **마치 기획서를 쓰듯이 코딩이 가능해집니다**
-
-```csharp
-// 상태가 바뀌는 원인도 기획서 쓰듯이 짤 수 있어요
-// C# < 10
-public readonly struct Damaged {  // "피해받음" 으로 인해 상태가 바뀜
-    public readonly float amount;   // 피해량
-    public readonly Element element;  // 속성
-    public readonly Vector3 direction;  // 방향
-
-    public Damaged(float amount, Element element, Vector3 direction) {
-        this.amount = amount;
-        this.element = element;
-        this.direction = direction; }
-}
-
-// C# 10+ 면 더 간결하게도 가능!
-public readonly record struct Damaged(float amount, Element element, Vector3 direction);
-```
 
 ---
 
@@ -69,6 +52,27 @@ var sm = RxFSM.Create<CharState>(CharState.Idle)
 ```
 
 어때요, 기획서를 보는 것 처럼 캐릭터의 움직임이 그려지지 않나요?
+
+---
+
+**데미지를 받는다는 게임속 사건**도 기획서 쓰듯이 코딩할 수 있어요
+
+```csharp
+// C# < 10
+public readonly struct Damaged {  // "피해받음" 이라는 사건
+    public readonly float amount;   // 피해량
+    public readonly Element element;  // 속성
+    public readonly Vector3 direction;  // 방향
+
+    public Damaged(float amount, Element element, Vector3 direction) {
+        this.amount = amount;
+        this.element = element;
+        this.direction = direction; }
+}
+
+// C# 10+ 면 더 간결하게도 가능!
+public readonly record struct Damaged(float amount, Element element, Vector3 direction);
+```
 
 ---
 

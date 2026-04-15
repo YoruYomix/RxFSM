@@ -18,26 +18,9 @@ sm.EnterState<Damaged>(State.Hit, (prev, trg) =>
     }
     hp -= trg.amount;  // Reduce HP by the damage amount
 });
+
 ```
 **You can code just like writing a game design document.**
-
-```csharp
-// The trigger that causes the state change is just as readable
-// C# < 10
-public readonly struct Damaged {  // "Damaged" is what causes the state change
-    public readonly float amount;     // damage value
-    public readonly Element element;  // element type
-    public readonly Vector3 direction;  // direction
-
-    public Damaged(float amount, Element element, Vector3 direction) {
-        this.amount = amount;
-        this.element = element;
-        this.direction = direction; }
-}
-
-// C# 10+ makes it even more concise!
-public readonly record struct Damaged(float amount, Element element, Vector3 direction);
-```
 
 ---
 
@@ -69,6 +52,27 @@ var sm = RxFSM.Create<CharState>(CharState.Idle)
 ```
 
 Reads like a character spec sheet, doesn't it?
+
+---
+
+**In-game events like taking damage** can be coded the same way.
+
+```csharp
+// C# < 10
+public readonly struct Damaged {  // "Damaged" — the event
+    public readonly float amount;     // damage value
+    public readonly Element element;  // element type
+    public readonly Vector3 direction;  // direction
+
+    public Damaged(float amount, Element element, Vector3 direction) {
+        this.amount = amount;
+        this.element = element;
+        this.direction = direction; }
+}
+
+// C# 10+ makes it even more concise!
+public readonly record struct Damaged(float amount, Element element, Vector3 direction);
+```
 
 ---
 

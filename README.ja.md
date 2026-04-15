@@ -18,26 +18,9 @@ sm.EnterState<Damaged>(State.Hit, (prev, trg) =>
     }
     hp -= trg.amount;  // ダメージ分だけ体力を減らす
 });
+
 ```
 **まるで企画書を書くようにコーディングできます。**
-
-```csharp
-// 状態が変わる原因も、企画書を書くように定義できます
-// C# < 10
-public readonly struct Damaged {  // 「ダメージを受けた」ことが状態を変える
-    public readonly float amount;     // ダメージ量
-    public readonly Element element;  // 属性
-    public readonly Vector3 direction;  // 方向
-
-    public Damaged(float amount, Element element, Vector3 direction) {
-        this.amount = amount;
-        this.element = element;
-        this.direction = direction; }
-}
-
-// C# 10+ ならさらに簡潔に書けます！
-public readonly record struct Damaged(float amount, Element element, Vector3 direction);
-```
 
 ---
 
@@ -69,6 +52,27 @@ var sm = RxFSM.Create<CharState>(CharState.Idle)
 ```
 
 キャラクターの動きが、まるで企画書を見ているように浮かびませんか？
+
+---
+
+**ダメージを受けるというゲーム内イベント**も、企画書を書くようにコーディングできます
+
+```csharp
+// C# < 10
+public readonly struct Damaged {  // 「ダメージを受けた」というイベント
+    public readonly float amount;     // ダメージ量
+    public readonly Element element;  // 属性
+    public readonly Vector3 direction;  // 方向
+
+    public Damaged(float amount, Element element, Vector3 direction) {
+        this.amount = amount;
+        this.element = element;
+        this.direction = direction; }
+}
+
+// C# 10+ ならさらに簡潔に書けます！
+public readonly record struct Damaged(float amount, Element element, Vector3 direction);
+```
 
 ---
 
