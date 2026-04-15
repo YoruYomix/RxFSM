@@ -23,7 +23,7 @@ public readonly struct Damaged {  // "피해받음" 이라는 사건은
 // 트리거한다, 새로운 "피해받음" 이라는 사건을. 50피해량, 불속성, 맞은 방향으로 
 sm.Trigger(new Damaged(50f, Element.Fire, hitDir));
 
-.AddTransitionFromAny<Damaged> // 피해받음 이라는 사건이 트리거 되면
+sm.AddTransitionFromAny<Damaged> // 피해받음 이라는 사건이 트리거 되면
 (
       _ => !invincible, // 무적이 아니라면
       to: CharState.Hit  // Hit 상태가 된다
