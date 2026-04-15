@@ -81,16 +81,22 @@ sm.EnterStateAsync<CastSpell>(State.Casting, async (prev, trg, ct) =>
 
 ---
 
-**데미지를 받는다는 게임속 사건**도 기획서 쓰듯이 코딩할 수 있어요
+**캐릭터를 움직이게 하는 사건(트리거)** 도 기획서 쓰듯이 코딩할 수 있어요
 
 ```csharp
-// C# < 10
-public readonly struct Damaged {  // "피해받음" 이라는 사건
-    public readonly float amount;   // 피해량
-    public readonly Element element;  // 속성
-    public readonly Vector3 direction;  // 방향
+.AddTransitionFromAny<Damaged> // 피해받음 이라는 사건(트리거)가 발생했는데
+(
+      _ => !invincible, // 무적이 아니라면
+      to: CharState.Hit  // 공격받음
+)
 
-    public Damaged(float amount, Element element, Vector3 direction) {
+public readonly struct Damaged {  // "피해받음" 이라는 사건은
+    public readonly float amount;   // 피해량과
+    public readonly Element element;  // 속성과
+    public readonly Vector3 direction;  // 방향이 있어야 한다
+// 기획 문서 같죠?
+
+      public Damaged(float amount, Element element, Vector3 direction) {
         this.amount = amount;
         this.element = element;
         this.direction = direction; }
