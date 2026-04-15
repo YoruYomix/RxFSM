@@ -84,13 +84,19 @@ sm.EnterStateAsync<CastSpell>(State.Casting, async (prev, trg, ct) =>
 **In-game events like taking damage** can be coded the same way.
 
 ```csharp
-// C# < 10
-public readonly struct Damaged {  // "Damaged" — the event
-    public readonly float amount;     // damage value
-    public readonly Element element;  // element type
-    public readonly Vector3 direction;  // direction
+.AddTransitionFromAny<Damaged> // When the "Damaged" event (trigger) occurs
+(
+      _ => !invincible, // if not invincible
+      to: CharState.Hit  // transition to Hit state
+)
 
-    public Damaged(float amount, Element element, Vector3 direction) {
+public readonly struct Damaged {  // The "Damaged" event requires
+    public readonly float amount;   // damage amount
+    public readonly Element element;  // element type
+    public readonly Vector3 direction;  // and direction
+	// Reads like a design document, right?
+
+      public Damaged(float amount, Element element, Vector3 direction) {
         this.amount = amount;
         this.element = element;
         this.direction = direction; }
