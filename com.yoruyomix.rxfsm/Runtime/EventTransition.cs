@@ -34,14 +34,12 @@ namespace RxFSM
         /// Evaluation order (short-circuits on first false):
         /// 1. trigger type must match EventType
         /// 2. if not FromAny, current state must match From
-        /// 3. To must differ from currentState (same-state transitions are no-ops)
-        /// 4. Condition (if any) must return true
+        /// 3. Condition (if any) must return true
         /// </summary>
         public bool Match(TState currentState, object trigger)
         {
             if (trigger.GetType() != EventType) return false;
             if (!FromAny && !From.Equals(currentState)) return false;
-            if (To.Equals(currentState)) return false;
             if (Condition != null && !Condition(trigger)) return false;
             return true;
         }

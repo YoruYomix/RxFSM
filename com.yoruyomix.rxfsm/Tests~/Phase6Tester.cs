@@ -94,7 +94,7 @@ namespace RxFSM
             // Group D — Appendix B safety
             D1_TriggerUnregistered_NoException();
             D2_TriggerAfterDispose_NoException();
-            D3_TransitionToSameState_NoCallbacks();
+            D3_TransitionToSameState_FiresCallbacks();
             D4_CallbackThrows_SequenceContinues();
             D5_MultipleCallbacks_OneThrows_OthersFire();
 
@@ -508,8 +508,8 @@ namespace RxFSM
             Assert(!threw, "T6.D2 — Trigger after Dispose does not throw");
         }
 
-        /// TransitionTo same state → no callbacks fire (Appendix B)
-        void D3_TransitionToSameState_NoCallbacks()
+        /// TransitionTo same state → callbacks fire (re-entry allowed)
+        void D3_TransitionToSameState_FiresCallbacks()
         {
             int enterCount = 0;
             int exitCount  = 0;
@@ -518,9 +518,9 @@ namespace RxFSM
             sm.EnterState((cur, prev) => enterCount++);
             sm.ExitState ((cur, next) => exitCount++);
 
-            sm.TransitionTo(S.Idle); // same state
-            Assert(enterCount == 0, "T6.D3a — EnterState not called on same-state transition");
-            Assert(exitCount  == 0, "T6.D3b — ExitState not called on same-state transition");
+            sm.TransitionTo(S.Idle); // same state — re-entry allowed
+            Assert(enterCount == 1, "T6.D3a — EnterState fires on same-state transition");
+            Assert(exitCount  == 1, "T6.D3b — ExitState fires on same-state transition");
             sm.Dispose();
         }
 

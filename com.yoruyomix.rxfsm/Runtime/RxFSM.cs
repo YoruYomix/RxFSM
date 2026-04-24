@@ -105,7 +105,6 @@ namespace RxFSM
         {
             if (_disposed) return;
             if (_deactivateCount > 0) return;
-            if (to.Equals(_current)) return;
 
             CancelAllFilterPipelines();
             CancelInterrupt();
@@ -129,7 +128,6 @@ namespace RxFSM
         {
             if (_disposed) return;
             if (_deactivateCount > 0) return;
-            if (to.Equals(_current)) return;
 
             CancelAllFilterPipelines();
             CancelInterrupt();
