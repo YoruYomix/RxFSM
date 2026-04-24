@@ -612,6 +612,8 @@ sm.EnterState((prev, cur, trg) =>
 });
 ```
 
+> **참고:** 콜백은 전이가 발생할 때만 호출됩니다. `Create<>()`에 지정한 초기 상태는 Enter를 발화하지 않으며, 첫 번째 `Trigger` 또는 `TransitionTo` 이후부터 콜백이 동작합니다.
+
 ### 라이프사이클 연동
 
 ```csharp

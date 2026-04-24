@@ -608,6 +608,8 @@ sm.EnterState((prev, cur, trg) =>
 });
 ```
 
+> **注意:** コールバックは遷移が発生したときのみ呼ばれます。`Create<>()`で指定した初期状態はEnterを発火しません — 最初の`Trigger`または`TransitionTo`以降からコールバックが動作します。
+
 ### ライフサイクル連携
 
 ```csharp
