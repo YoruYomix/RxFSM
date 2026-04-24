@@ -613,7 +613,7 @@ sm.EnterState((prev, cur, trg) =>
 });
 ```
 
-> **Note:** Callbacks only fire on transitions. The initial state set in `Create<>()` does not fire Enter — the first callback fires when the first `Trigger` or `TransitionTo` occurs.
+> **Note:** Callbacks only fire on transitions. The initial state set in `Create<>()` fires no Enter, Tick, or Exit — all callbacks are silent until the first `Trigger` or `TransitionTo` occurs.
 
 ### Lifecycle integration
 
