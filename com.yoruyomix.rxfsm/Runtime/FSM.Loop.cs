@@ -16,22 +16,26 @@ namespace RxFSM
         {
             TState capturedPrev = default;
             object capturedTrg  = null;
+            bool   isActive     = false;
             bool   skipNext     = false;
             bool   disposed     = false;
 
-            // Captures entry context and sets skip-first-tick when Enter fires normally.
-            // When Start(state, false) is used, Enter never fires so tick begins immediately
-            // the next frame — _current.Equals(targetState) drives activation instead.
             var enterHandle = EnterState(targetState, (prev, trg) =>
             {
                 capturedPrev = prev;
                 capturedTrg  = trg;
-                skipNext     = true;
+                isActive     = true;
+                skipNext     = true;   // defer first tick to next frame
+            });
+
+            var exitHandle = ExitState(targetState, (next, trg) =>
+            {
+                isActive = false;
             });
 
             var tickHandle = FSMLoop.Register(FSMLoop.STAGE_TICKS, () =>
             {
-                if (disposed || !_current.Equals(targetState) || _deactivateCount > 0) return;
+                if (disposed || !isActive || _deactivateCount > 0) return;
                 if (skipNext) { skipNext = false; return; }
                 try { callback(capturedPrev, capturedTrg); }
                 catch (Exception ex) { OnError?.Invoke(ex, capturedTrg, CallbackType.TickState); }
@@ -42,6 +46,7 @@ namespace RxFSM
                 if (disposed) return;
                 disposed = true;
                 enterHandle.Dispose();
+                exitHandle.Dispose();
                 tickHandle.Dispose();
             });
 
