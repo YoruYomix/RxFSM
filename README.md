@@ -101,10 +101,10 @@ sm.EnterStateAsync<CastSpell>(State.Casting, async (prev, trg, ct) =>
             mana += trg.ManaCost * 0.5f;  // refund half the mana
         } // reads like a scene from the game, doesn't it?
     }
-}, AsyncOperation.Switch);
+}, TransitionOperation.Switch);
 ```
 
-`AsyncOperation.Switch` cancels whatever is in progress when transitioning to a different state — by firing the **cancellation token**.
+`TransitionOperation.Switch` cancels whatever is in progress when transitioning to a different state — by firing the **cancellation token**.
 
 ---
 
@@ -149,10 +149,10 @@ sm.EnterStateAsync<AttackInput>(State.Attack, async (prev, trg, ct) =>
 	    
     await animationCompletionSource.Task;
     
-}, AsyncOperation.Throttle); 
+}, TransitionOperation.Throttle); 
 ```
 
-`AsyncOperation.Throttle` Prevents transition from State.Attack until all conditions above are met.
+`TransitionOperation.Throttle` Prevents transition from State.Attack until all conditions above are met.
 
 
 ---
@@ -171,7 +171,7 @@ dialogueSM.EnterStateAsync<PlayDialogue>(State.Play, async (prev, trg, ct) =>
         text.text = trg.Dialogue;
         PlayCursorBlink();
     }
-}, AsyncOperation.Switch);
+}, TransitionOperation.Switch);
 ```
 
 ---
@@ -526,16 +526,16 @@ var characterFsm = RxFSM.Create<AliveState>(AliveState.Ground)
 groundSm.EnterStateAsync(GroundState.Idle, async (prev, ct) => {
 
     await IdleDelay(ct);
-}, AsyncOperation.Throttle);
+}, TransitionOperation.Throttle);
 
 
 groundSm.EnterStateAsync(async (cur, prev, ct) => {
 
     await IdleDelay(ct);
-}, AsyncOperation.Throttle);
+}, TransitionOperation.Throttle);
 ```
 
-`AsyncOperation.Throttle` blocks the next transition out of that state until the async task completes.
+`TransitionOperation.Throttle` blocks the next transition out of that state until the async task completes.
 
 ---
 
@@ -647,7 +647,7 @@ var sm = RxFSM.Create<UIState>(UIState.Normal)
 sm.EnterStateAsync(async (cur, prev, trg, ct) =>
     {
         await ScaleAnimation(cur, trg, ct);
-    }, AsyncOperation.Switch)
+    }, TransitionOperation.Switch)
     .AddTo(gameObject);
 ```
 
@@ -716,14 +716,14 @@ battleFsm.EnterStateAsync<UltimateActivated>(BattleState.UltimateCutscene, async
 	}
 	
     battleFsm.Trigger(new UltimateFinished());
-}, AsyncOperation.Throttle);
+}, TransitionOperation.Throttle);
 
 battleFsm.EnterStateAsync<AllEnemyDead>(BattleState.Victory, async (prev, trg, ct) =>
 {
     StopAllCharacterAI();
     ShowVictoryUI(trg.finisher, trg.gameTime);
     await PlayVictoryAnimation(trg.finisher, ct);
-}, AsyncOperation.Switch);
+}, TransitionOperation.Switch);
 ```
 
 ---
@@ -747,7 +747,7 @@ async UniTask Tutorial(CancellationToken ct)
 }
 ```
 
-`ToUniTask(state, ct)` completes the moment the FSM enters the target state. Pair it with `AsyncOperation.Switch` handlers to build step-by-step tutorial or cutscene flows without polling.
+`ToUniTask(state, ct)` completes the moment the FSM enters the target state. Pair it with `TransitionOperation.Switch` handlers to build step-by-step tutorial or cutscene flows without polling.
 
 ---
 
@@ -784,7 +784,7 @@ sm.Connect(network.commandStream);   // IObservable<NetworkCommand>
 | `ThrottleFrameState(state, frames)`  | Frame-based version of ThrottleState.                                                                                                                    |
 | `HoldState(state, waitUntil)`        | Defer transition out of a state until a condition is met. Pending transitions execute once the condition is satisfied.                                   |
 | `AutoTransition(from, to, time)`     | Automatically transition after a set duration or clip completion.                                                                                        |
-| `ForceTransitionTo(state)`           | Bypass all guards: AsyncOperation.Throttle, TransitionFilter, ThrottleState, ThrottleFrameState, and HoldState.                                             |
+| `ForceTransitionTo(state)`           | Bypass all guards: TransitionOperation.Throttle, TransitionFilter, ThrottleState, ThrottleFrameState, and HoldState.                                             |
 | `TransitionTo(state)`                | Directly transition to a specified state.                                                                                                                |
 | `Deactivate()`                       | Pause the FSM. Resume by disposing the returned handle.                                                                                                  |
 | `Interrupt(IInterrupt)`              | Inject branching async logic based on current state, with cancellation support.                                                                          |

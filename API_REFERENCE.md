@@ -63,7 +63,7 @@ var sm = FSM.Create<TState>(initialState)
     .AddTransitionFromAny<TTrigger>(_ => !invincible, to: S.X)
 
     // ForceTransition modifier — MUST chain immediately after AddTransition / AddTransitionFromAny
-    // Bypasses: ThrottleState, HoldState, AsyncOperation.Throttle guard, TransitionFilter
+    // Bypasses: ThrottleState, HoldState, TransitionOperation.Throttle guard, TransitionFilter
     .AddTransition<TTrigger>(trg => trg.amount > hp, from: S.A, to: S.Dead)
         .ForceTransition()
 
@@ -86,7 +86,7 @@ var sm = FSM.Create<TState>(initialState)
 ```csharp
 sm.Trigger(new Damaged(50f, hitDir));   // immediate, synchronous — evaluated this frame
 sm.TransitionTo(S.Idle);               // direct transition, no trigger, no condition checks
-sm.ForceTransitionTo(S.Dead);          // bypasses all guards (ThrottleState, HoldState, AsyncOperation.Throttle, TransitionFilter)
+sm.ForceTransitionTo(S.Dead);          // bypasses all guards (ThrottleState, HoldState, TransitionOperation.Throttle, TransitionFilter)
 ```
 
 ---
@@ -214,10 +214,10 @@ Four policies:
 
 | Policy | Behavior |
 |---|---|
-| `AsyncOperation.Throttle` | Blocks next transition out of the state until task completes. Only the most recent pending trigger is stored — intermediates are discarded. |
-| `AsyncOperation.Switch` | Cancels the current task (via `CancellationToken`) when a new entry or exit occurs. |
-| `AsyncOperation.Parallel` | No blocking, no cancellation. Runs independently. Only `ForceTransitionTo` / `Deactivate` / `Dispose` cancel it. |
-| `AsyncOperation.Drop` | If a task is already running, new state entries are **silently discarded** — no queuing, no restart, no pending storage. |
+| `TransitionOperation.Throttle` | Blocks next transition out of the state until task completes. Only the most recent pending trigger is stored — intermediates are discarded. |
+| `TransitionOperation.Switch` | Cancels the current task (via `CancellationToken`) when a new entry or exit occurs. |
+| `TransitionOperation.Parallel` | No blocking, no cancellation. Runs independently. Only `ForceTransitionTo` / `Deactivate` / `Dispose` cancel it. |
+| `TransitionOperation.Drop` | If a task is already running, new state entries are **silently discarded** — no queuing, no restart, no pending storage. |
 
 **Policy priority when multiple subscriptions coexist on the same state: Drop → Throttle → Switch / Parallel.**
 
@@ -235,7 +235,7 @@ sm.EnterStateAsync(
     async (TState cur, TState prev, CancellationToken ct) =>
     {
         await PlayAnimation(cur, ct);
-    }, AsyncOperation.Throttle);
+    }, TransitionOperation.Throttle);
 
 // Unfiltered with trigger — (cur, prev, trg, ct)
 sm.EnterStateAsync(
@@ -243,14 +243,14 @@ sm.EnterStateAsync(
     {
         var d = (Damaged)trg;
         await PlayHitAsync(d.direction, ct);
-    }, AsyncOperation.Switch);
+    }, TransitionOperation.Switch);
 
 // State-filtered — (prev, ct) — fires only when entering targetState
 sm.EnterStateAsync(S.Attack,
     async (TState prev, CancellationToken ct) =>
     {
         await AttackAnimation(ct);
-    }, AsyncOperation.Throttle);
+    }, TransitionOperation.Throttle);
 
 // State + Trigger filtered — (prev, trg, ct) — fires only when entering targetState via TTrigger
 sm.EnterStateAsync<CastSpell>(S.Casting,
@@ -259,7 +259,7 @@ sm.EnterStateAsync<CastSpell>(S.Casting,
         mana -= trg.ManaCost;
         try   { await CastAsync(trg, ct); }
         catch (OperationCanceledException) { mana += trg.ManaCost * 0.5f; }
-    }, AsyncOperation.Switch);
+    }, TransitionOperation.Switch);
 ```
 
 **All `EnterStateAsync` overloads return `IDisposable`.** Disposing cancels the running task immediately and unregisters the callback.
@@ -274,8 +274,8 @@ Guards block transitions out of a state. Multiple guards use **AND logic** — a
 |---|---|
 | `ThrottleState` | Stores last trigger while active; fires when timer expires |
 | `HoldState` | Stores last trigger; fires when `waitUntil()` returns true |
-| `AsyncOperation.Throttle` | Stores last trigger; fires when async task completes |
-| `AsyncOperation.Drop` | **Discards** trigger (no pending stored); does NOT fire after task completes |
+| `TransitionOperation.Throttle` | Stores last trigger; fires when async task completes |
+| `TransitionOperation.Drop` | **Discards** trigger (no pending stored); does NOT fire after task completes |
 
 Only one pending trigger is stored per state (last-wins). Guards share this slot.
 
@@ -571,7 +571,7 @@ battleFsm.EnterStateAsync<UltimateActivated>(BattleState.UltimateCutscene,
             await PlayUltimateCutIn(u.caster, u.data, ct);
         }
         battleFsm.Trigger(new UltimateFinished());
-    }, AsyncOperation.Throttle);
+    }, TransitionOperation.Throttle);
 ```
 
 ---

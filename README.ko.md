@@ -101,10 +101,10 @@ sm.EnterStateAsync<CastSpell>(State.Casting, async (prev, trg, ct) =>
             mana += trg.ManaCost * 0.5f;  // 마나의 절반을 돌려받구요
         } // 코드가 마치 게임의 한 장면을 보는 것 같죠?
     }
-}, AsyncOperation.Switch); 
+}, TransitionOperation.Switch); 
 ```
 
-`AsyncOperation.Switch`는 다른 상태가 될 때 지금 하고있는 걸 취소합니다. **캔슬레이션 토큰**을 발동해서요.
+`TransitionOperation.Switch`는 다른 상태가 될 때 지금 하고있는 걸 취소합니다. **캔슬레이션 토큰**을 발동해서요.
 
 ---
 
@@ -149,10 +149,10 @@ sm.EnterStateAsync<AttackInput>(State.Attack, async (prev, trg, ct) =>
 
     await animationCompletionSource.Task;
 
-}, AsyncOperation.Throttle);
+}, TransitionOperation.Throttle);
 ```
 
-`AsyncOperation.Throttle`은 위 조건이 모두 충족될 때까지 State.Attack에서의 전이를 막습니다.
+`TransitionOperation.Throttle`은 위 조건이 모두 충족될 때까지 State.Attack에서의 전이를 막습니다.
 
 ---
 
@@ -170,7 +170,7 @@ dialogueSM.EnterStateAsync<PlayDialogue>(State.Play, async (prev, trg, ct) =>
         text.text = trg.Dialogue;
         PlayCursorBlink();
     }
-}, AsyncOperation.Switch);
+}, TransitionOperation.Switch);
 ```
 
 ---
@@ -525,16 +525,16 @@ var characterFsm = RxFSM.Create<AliveState>(AliveState.Ground)
 groundSm.EnterStateAsync(GroundState.Idle, async (prev, ct) => {
 
     await IdleDelay(ct);
-}, AsyncOperation.Throttle);
+}, TransitionOperation.Throttle);
 
 
 groundSm.EnterStateAsync(async (cur, prev, ct) => {
 
     await IdleDelay(ct);
-}, AsyncOperation.Throttle);
+}, TransitionOperation.Throttle);
 ```
 
-`AsyncOperation.Throttle`은 비동기 작업이 완료될 때까지 해당 상태에서의 다음 전이를 차단합니다.
+`TransitionOperation.Throttle`은 비동기 작업이 완료될 때까지 해당 상태에서의 다음 전이를 차단합니다.
 
 ---
 
@@ -647,7 +647,7 @@ var sm = RxFSM.Create<UIState>(UIState.Normal)
 sm.EnterStateAsync(async (cur, prev, trg, ct) =>
     {
         await ScaleAnimation(cur, trg, ct);
-    }, AsyncOperation.Switch)
+    }, TransitionOperation.Switch)
     .AddTo(gameObject);
 ```
 
@@ -716,14 +716,14 @@ battleFsm.EnterStateAsync<UltimateActivated>(BattleState.UltimateCutscene, async
     }
 
     battleFsm.Trigger(new UltimateFinished());
-}, AsyncOperation.Throttle);
+}, TransitionOperation.Throttle);
 
 battleFsm.EnterStateAsync<AllEnemyDead>(BattleState.Victory, async (prev, trg, ct) =>
 {
     StopAllCharacterAI();
     ShowVictoryUI(trg.finisher, trg.gameTime);
     await PlayVictoryAnimation(trg.finisher, ct);
-}, AsyncOperation.Switch);
+}, TransitionOperation.Switch);
 ```
 
 ---
@@ -747,7 +747,7 @@ async UniTask Tutorial(CancellationToken ct)
 }
 ```
 
-`ToUniTask(state, ct)`는 FSM이 목표 상태에 진입하는 순간 완료됩니다. `AsyncOperation.Switch` 핸들러와 함께 사용하면 폴링 없이 단계별 튜토리얼이나 컷씬 흐름을 구성할 수 있습니다.
+`ToUniTask(state, ct)`는 FSM이 목표 상태에 진입하는 순간 완료됩니다. `TransitionOperation.Switch` 핸들러와 함께 사용하면 폴링 없이 단계별 튜토리얼이나 컷씬 흐름을 구성할 수 있습니다.
 
 ---
 
@@ -784,7 +784,7 @@ sm.Connect(network.commandStream);   // IObservable<NetworkCommand>
 | `ThrottleFrameState(state, frames)` | ThrottleState의 프레임 기반 버전. |
 | `HoldState(state, waitUntil)` | 조건이 충족될 때까지 상태 이탈 지연. |
 | `AutoTransition(from, to, time)` | 지정 시간 후 또는 콜백 완료 시 자동 전이. |
-| `ForceTransitionTo(state)` | 모든 가드 우회. AsyncOperation.Throttle, TransitionFilter, ThrottleState 등 무시. |
+| `ForceTransitionTo(state)` | 모든 가드 우회. TransitionOperation.Throttle, TransitionFilter, ThrottleState 등 무시. |
 | `TransitionTo(state)` | 지정 상태로 직접 전이. |
 | `Deactivate()` | FSM 일시 정지. 반환된 핸들을 Dispose하면 재개됩니다. |
 | `Interrupt(IInterrupt)` | 현재 상태 기반 비동기 분기 로직 삽입. 취소 지원. |

@@ -9,7 +9,7 @@ namespace RxFSM
 {
     /// <summary>
     /// Phase 6 — High-stress tester.
-    /// Focuses on: new trigger overloads, AsyncOperation.Drop,
+    /// Focuses on: new trigger overloads, TransitionOperation.Drop,
     /// handle-dispose edge cases, all Appendix B scenarios, interrupt edge
     /// cases, and complex mixed compositions. Regressions for Phases 3-5
     /// are included at the end.
@@ -110,7 +110,7 @@ namespace RxFSM
             yield return StartCoroutine(A3_StateTriggerFilteredAsync_FiltersByTriggerType());
             yield return StartCoroutine(A4_StateTriggerFilteredAsync_ValuePassed());
 
-            // Group B — AsyncOperation.Drop
+            // Group B — TransitionOperation.Drop
             yield return StartCoroutine(B1_Drop_DropsWhileActive());
             yield return StartCoroutine(B2_Drop_FiresAfterPreviousComplete());
 
@@ -163,7 +163,7 @@ namespace RxFSM
             {
                 fireCount++;
                 await Task.CompletedTask;
-            }, AsyncOperation.Parallel);
+            }, TransitionOperation.Parallel);
 
             sm.Trigger(new MoveStarted()); // Idle→Walk
             sm.Trigger(new MoveStopped()); // Walk→Idle
@@ -190,7 +190,7 @@ namespace RxFSM
                 gotPrev = prev;
                 gotAmt  = trg is Damaged d ? d.amount : -1f;
                 await Task.CompletedTask;
-            }, AsyncOperation.Parallel);
+            }, TransitionOperation.Parallel);
 
             sm.Trigger(new Damaged(42f));
             yield return null;
@@ -217,14 +217,14 @@ namespace RxFSM
             {
                 damagedCount++;
                 await Task.CompletedTask;
-            }, AsyncOperation.Parallel);
+            }, TransitionOperation.Parallel);
 
             // Only fires when entering Idle via Healed
             sm.EnterStateAsync<Healed>(S.Idle, async (prev, trg, ct) =>
             {
                 healedCount++;
                 await Task.CompletedTask;
-            }, AsyncOperation.Parallel);
+            }, TransitionOperation.Parallel);
 
             sm.Trigger(new Damaged(10f)); // → Hit (Damaged fires, Healed does not)
             sm.Trigger(new Healed(50f));  // → Idle (Healed fires, Damaged does not)
@@ -251,7 +251,7 @@ namespace RxFSM
                 gotPrev  = (S)prev;
                 gotLevel = trg is CastSpell cs ? cs.level : -1;
                 await Task.CompletedTask;
-            }, AsyncOperation.Parallel);
+            }, TransitionOperation.Parallel);
 
             sm.Trigger(new CastSpell(3));
             yield return null;
@@ -339,7 +339,7 @@ namespace RxFSM
         }
 
         // ═════════════════════════════════════════════════════════════════════════
-        // GROUP B — AsyncOperation.Drop
+        // GROUP B — TransitionOperation.Drop
         // ═════════════════════════════════════════════════════════════════════════
 
         /// T6.B1 — Drop discards new entries while task is active
@@ -355,7 +355,7 @@ namespace RxFSM
             {
                 startCount++;
                 await Task.Delay(400, ct);
-            }, AsyncOperation.Drop);
+            }, TransitionOperation.Drop);
 
             sm.TransitionTo(S.Walk);
             sm.TransitionTo(S.Idle);
@@ -382,7 +382,7 @@ namespace RxFSM
             {
                 startCount++;
                 await Task.Delay(200, ct);
-            }, AsyncOperation.Drop);
+            }, TransitionOperation.Drop);
 
             sm.TransitionTo(S.Walk);
             Assert(startCount == 1, "T6.B2a — first entry starts");
@@ -411,7 +411,7 @@ namespace RxFSM
             var handle = sm.EnterStateAsync(S.Walk, async (prev, ct) =>
             {
                 await Task.Delay(10000, ct); // very long
-            }, AsyncOperation.Throttle);
+            }, TransitionOperation.Throttle);
 
             sm.TransitionTo(S.Walk);
             sm.Trigger(new MoveStopped()); // queued — blocked by Throttle
@@ -435,7 +435,7 @@ namespace RxFSM
             {
                 try   { await Task.Delay(10000, ct); }
                 catch (OperationCanceledException) { wasCancelled = true; }
-            }, AsyncOperation.Switch);
+            }, TransitionOperation.Switch);
 
             sm.TransitionTo(S.Walk);
             handle.Dispose();
@@ -458,7 +458,7 @@ namespace RxFSM
             {
                 fireCount++;
                 await Task.CompletedTask;
-            }, AsyncOperation.Switch);
+            }, TransitionOperation.Switch);
 
             sm.TransitionTo(S.Walk); // fires once
             yield return null;
@@ -665,25 +665,25 @@ namespace RxFSM
             sm.EnterStateAsync(async (cur, prev, ct) =>
             {
                 fired[0] = true; await Task.CompletedTask;
-            }, AsyncOperation.Parallel);
+            }, TransitionOperation.Parallel);
 
             // Overload 2: (cur, prev, trg, ct)  ← NEW
             sm.EnterStateAsync(async (cur, prev, trg, ct) =>
             {
                 fired[1] = true; await Task.CompletedTask;
-            }, AsyncOperation.Parallel);
+            }, TransitionOperation.Parallel);
 
             // Overload 3: state-filtered (prev, ct)
             sm.EnterStateAsync(S.Hit, async (prev, ct) =>
             {
                 fired[2] = true; await Task.CompletedTask;
-            }, AsyncOperation.Parallel);
+            }, TransitionOperation.Parallel);
 
             // Overload 4: state+trigger filtered (prev, trg, ct)  ← NEW
             sm.EnterStateAsync<Damaged>(S.Hit, async (prev, trg, ct) =>
             {
                 fired[3] = true; await Task.CompletedTask;
-            }, AsyncOperation.Parallel);
+            }, TransitionOperation.Parallel);
 
             sm.Trigger(new Damaged(10f));
             yield return null;
@@ -715,12 +715,12 @@ namespace RxFSM
             sm.EnterStateAsync<Damaged>(S.Hit, async (prev, trg, ct) =>
             {
                 asyncDamaged++; await Task.CompletedTask;
-            }, AsyncOperation.Parallel);
+            }, TransitionOperation.Parallel);
 
             sm.EnterStateAsync<Healed>(S.Idle, async (prev, trg, ct) =>
             {
                 asyncHealed++; await Task.CompletedTask;
-            }, AsyncOperation.Parallel);
+            }, TransitionOperation.Parallel);
 
             sm.Trigger(new Damaged(10f)); // → Hit
             sm.Trigger(new Healed(50f));  // → Idle
@@ -734,7 +734,7 @@ namespace RxFSM
             sm.Dispose();
         }
 
-        /// T6.F3 — ThrottleState + AsyncOperation.Throttle + AsyncOperation.Switch all on Walk
+        /// T6.F3 — ThrottleState + TransitionOperation.Throttle + TransitionOperation.Switch all on Walk
         /// All three must release before pending transition executes;
         /// Switch is cancelled when transition finally occurs.
         IEnumerator F3_ThrottleState_AsyncThrottle_Switch_AllOnSameState()
@@ -753,14 +753,14 @@ namespace RxFSM
             {
                 await Task.Delay(500, ct);
                 asyncThrottleDone = true;
-            }, AsyncOperation.Throttle);
+            }, TransitionOperation.Throttle);
 
             // gate 3: switch (should be cancelled when transition executes)
             sm.EnterStateAsync(S.Walk, async (prev, ct) =>
             {
                 try   { await Task.Delay(10000, ct); }
                 catch (OperationCanceledException) { switchCancelled = true; }
-            }, AsyncOperation.Switch);
+            }, TransitionOperation.Switch);
 
             sm.Trigger(new MoveStarted());
             sm.Trigger(new MoveStopped()); // blocked
@@ -835,7 +835,7 @@ namespace RxFSM
                 gotPower   = trg is AttackInput a ? a.power : -1f;
                 asyncTrgFired = true;
                 await Task.Delay(50, ct);
-            }, AsyncOperation.Switch);
+            }, TransitionOperation.Switch);
 
             sm.Interrupt(new LambdaInterrupt(async (state, ct) =>
             {

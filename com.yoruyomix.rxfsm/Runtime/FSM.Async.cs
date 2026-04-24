@@ -13,7 +13,7 @@ namespace RxFSM
         {
             public CancellationTokenSource Cts;
             public bool                    IsActive;   // Throttle/Drop: true while task running
-            public AsyncOperation          Policy;
+            public TransitionOperation          Policy;
             public bool                    HasTargetState;
             public TState                  TargetState; // meaningful only if HasTargetState
         }
@@ -25,7 +25,7 @@ namespace RxFSM
 
         public IDisposable EnterStateAsync(
             Func<TState, TState, CancellationToken, Task> callback,
-            AsyncOperation policy)
+            TransitionOperation policy)
         {
             var sub = new AsyncSub { Policy = policy, HasTargetState = false };
             (_asyncSubs ??= new List<AsyncSub>()).Add(sub);
@@ -40,7 +40,7 @@ namespace RxFSM
             });
 
             // Switch: cancel when any state exits
-            IDisposable exitHandle = policy == AsyncOperation.Switch
+            IDisposable exitHandle = policy == TransitionOperation.Switch
                 ? ExitState((cur, next) => sub.Cts?.Cancel())
                 : Disposable.Empty;
 
@@ -57,7 +57,7 @@ namespace RxFSM
 
         public IDisposable EnterStateAsync(
             Func<TState, TState, object, CancellationToken, Task> callback,
-            AsyncOperation policy)
+            TransitionOperation policy)
         {
             var sub = new AsyncSub { Policy = policy, HasTargetState = false };
             (_asyncSubs ??= new List<AsyncSub>()).Add(sub);
@@ -71,7 +71,7 @@ namespace RxFSM
                     ct => callback(capturedCur, capturedPrev, capturedTrg, ct));
             }));
 
-            IDisposable exitHandle = policy == AsyncOperation.Switch
+            IDisposable exitHandle = policy == TransitionOperation.Switch
                 ? ExitState((cur, next) => sub.Cts?.Cancel())
                 : Disposable.Empty;
 
@@ -89,7 +89,7 @@ namespace RxFSM
         public IDisposable EnterStateAsync(
             TState targetState,
             Func<TState, CancellationToken, Task> callback,
-            AsyncOperation policy)
+            TransitionOperation policy)
         {
             var sub = new AsyncSub { Policy = policy, HasTargetState = true, TargetState = targetState };
             (_asyncSubs ??= new List<AsyncSub>()).Add(sub);
@@ -101,7 +101,7 @@ namespace RxFSM
                     ct => callback(capturedPrev, ct));
             });
 
-            IDisposable exitHandle = policy == AsyncOperation.Switch
+            IDisposable exitHandle = policy == TransitionOperation.Switch
                 ? ExitState(targetState, (next, trg) => sub.Cts?.Cancel())
                 : Disposable.Empty;
 
@@ -119,7 +119,7 @@ namespace RxFSM
         public IDisposable EnterStateAsync<TTrigger>(
             TState targetState,
             Func<TState, TTrigger, CancellationToken, Task> callback,
-            AsyncOperation policy)
+            TransitionOperation policy)
             where TTrigger : struct
         {
             var sub = new AsyncSub { Policy = policy, HasTargetState = true, TargetState = targetState };
@@ -133,7 +133,7 @@ namespace RxFSM
                     ct => callback(capturedPrev, capturedTrg, ct));
             });
 
-            IDisposable exitHandle = policy == AsyncOperation.Switch
+            IDisposable exitHandle = policy == TransitionOperation.Switch
                 ? ExitState(targetState, (next, trg) => sub.Cts?.Cancel())
                 : Disposable.Empty;
 
@@ -155,13 +155,13 @@ namespace RxFSM
         {
             switch (sub.Policy)
             {
-                case AsyncOperation.Switch:
+                case TransitionOperation.Switch:
                     sub.Cts?.Cancel();
                     sub.Cts = new CancellationTokenSource();
                     _ = RunFireAndForget(invoke(sub.Cts.Token));
                     break;
 
-                case AsyncOperation.Throttle:
+                case TransitionOperation.Throttle:
                     if (sub.IsActive) return;  // already throttling, guard already stored pending
                     sub.Cts      = new CancellationTokenSource();
                     sub.IsActive = true;
@@ -169,13 +169,13 @@ namespace RxFSM
                     _ = RunThrottleAsync(invoke, sub.Cts.Token, sub, enteredState);
                     break;
 
-                case AsyncOperation.Parallel:
+                case TransitionOperation.Parallel:
                     var ctsPar = new CancellationTokenSource();
                     sub.Cts = ctsPar;
                     _ = RunFireAndForget(invoke(ctsPar.Token));
                     break;
 
-                case AsyncOperation.Drop:
+                case TransitionOperation.Drop:
                     if (sub.IsActive) return;  // drop while task is running
                     sub.Cts      = new CancellationTokenSource();
                     sub.IsActive = true;
@@ -300,7 +300,7 @@ namespace RxFSM
                 sub.IsActive = false;
                 if (sub.HasTargetState)
                 {
-                    if (sub.Policy == AsyncOperation.Drop)
+                    if (sub.Policy == TransitionOperation.Drop)
                         DecrementDropCount(sub.TargetState);
                     else
                         DecrementAsyncThrottle(sub.TargetState);

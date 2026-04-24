@@ -36,18 +36,18 @@ namespace RxFSM
         // ── EnterStateAsync ───────────────────────────────────────────────────────
         IDisposable EnterStateAsync(
             Func<TState, TState, CancellationToken, Task> callback,
-            AsyncOperation policy);
+            TransitionOperation policy);
         IDisposable EnterStateAsync(
             Func<TState, TState, object, CancellationToken, Task> callback,
-            AsyncOperation policy);
+            TransitionOperation policy);
         IDisposable EnterStateAsync(
             TState targetState,
             Func<TState, CancellationToken, Task> callback,
-            AsyncOperation policy);
+            TransitionOperation policy);
         IDisposable EnterStateAsync<TTrigger>(
             TState targetState,
             Func<TState, TTrigger, CancellationToken, Task> callback,
-            AsyncOperation policy)
+            TransitionOperation policy)
             where TTrigger : struct;
     }
 }

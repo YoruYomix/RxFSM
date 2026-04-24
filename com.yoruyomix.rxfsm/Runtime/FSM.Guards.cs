@@ -31,7 +31,7 @@ namespace RxFSM
 
         private Dictionary<TState, object> _guardPending;
 
-        // ── AsyncOperation.Throttle count (set by FSM.Async.cs) ─────────────────
+        // ── TransitionOperation.Throttle count (set by FSM.Async.cs) ─────────────────
 
         internal Dictionary<TState, int> _asyncThrottleCount;
 

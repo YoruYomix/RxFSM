@@ -74,10 +74,10 @@ sm.EnterStateAsync<CastSpell>(State.Casting, async (prev, trg, ct) =>
             mana += trg.ManaCost * 0.5f;  // マナを半分還元
         } // ゲームの一場面を読んでいるようですね？
     }
-}, AsyncOperation.Switch);
+}, TransitionOperation.Switch);
 ```
 
-`AsyncOperation.Switch` は別の状態に遷移するとき、**キャンセルトークン**を発動して今の処理をキャンセルします。
+`TransitionOperation.Switch` は別の状態に遷移するとき、**キャンセルトークン**を発動して今の処理をキャンセルします。
 
 ---
 
@@ -145,10 +145,10 @@ sm.EnterStateAsync<AttackInput>(State.Attack, async (prev, trg, ct) =>
 
     await animationCompletionSource.Task;
 
-}, AsyncOperation.Throttle);
+}, TransitionOperation.Throttle);
 ```
 
-`AsyncOperation.Throttle` は、上記の条件がすべて満たされるまで State.Attack からの遷移を防ぎます。
+`TransitionOperation.Throttle` は、上記の条件がすべて満たされるまで State.Attack からの遷移を防ぎます。
 
 ---
 
@@ -166,7 +166,7 @@ dialogueSM.EnterStateAsync<PlayDialogue>(State.Play, async (prev, trg, ct) =>
         text.text = trg.Dialogue;
         PlayCursorBlink();
     }
-}, AsyncOperation.Switch);
+}, TransitionOperation.Switch);
 ```
 
 ---
@@ -521,16 +521,16 @@ var characterFsm = RxFSM.Create<AliveState>(AliveState.Ground)
 groundSm.EnterStateAsync(GroundState.Idle, async (prev, ct) => {
 
     await IdleDelay(ct);
-}, AsyncOperation.Throttle);
+}, TransitionOperation.Throttle);
 
 
 groundSm.EnterStateAsync(async (cur, prev, ct) => {
 
     await IdleDelay(ct);
-}, AsyncOperation.Throttle);
+}, TransitionOperation.Throttle);
 ```
 
-`AsyncOperation.Throttle` は非同期タスクが完了するまで、その状態からの次の遷移をブロックします。
+`TransitionOperation.Throttle` は非同期タスクが完了するまで、その状態からの次の遷移をブロックします。
 
 ---
 
@@ -643,7 +643,7 @@ var sm = RxFSM.Create<UIState>(UIState.Normal)
 sm.EnterStateAsync(async (cur, prev, trg, ct) =>
     {
         await ScaleAnimation(cur, trg, ct);
-    }, AsyncOperation.Switch)
+    }, TransitionOperation.Switch)
     .AddTo(gameObject);
 ```
 
@@ -712,14 +712,14 @@ battleFsm.EnterStateAsync<UltimateActivated>(BattleState.UltimateCutscene, async
     }
 
     battleFsm.Trigger(new UltimateFinished());
-}, AsyncOperation.Throttle);
+}, TransitionOperation.Throttle);
 
 battleFsm.EnterStateAsync<AllEnemyDead>(BattleState.Victory, async (prev, trg, ct) =>
 {
     StopAllCharacterAI();
     ShowVictoryUI(trg.finisher, trg.gameTime);
     await PlayVictoryAnimation(trg.finisher, ct);
-}, AsyncOperation.Switch);
+}, TransitionOperation.Switch);
 ```
 
 ---
@@ -743,7 +743,7 @@ async UniTask Tutorial(CancellationToken ct)
 }
 ```
 
-`ToUniTask(state, ct)` はFSMが目標状態に入った瞬間に完了します。`AsyncOperation.Switch` ハンドラと組み合わせることで、ポーリングなしにステップバイステップのチュートリアルやカットシーンフローを構築できます。
+`ToUniTask(state, ct)` はFSMが目標状態に入った瞬間に完了します。`TransitionOperation.Switch` ハンドラと組み合わせることで、ポーリングなしにステップバイステップのチュートリアルやカットシーンフローを構築できます。
 
 ---
 
@@ -780,7 +780,7 @@ sm.Connect(network.commandStream);   // IObservable<NetworkCommand>
 | `ThrottleFrameState(state, frames)` | ThrottleStateのフレームベース版。 |
 | `HoldState(state, waitUntil)` | 条件が満たされるまで状態の離脱を遅延。 |
 | `AutoTransition(from, to, time)` | 指定時間後またはコールバック完了時に自動遷移。 |
-| `ForceTransitionTo(state)` | すべてのガードを無視して遷移。AsyncOperation.Throttle、TransitionFilterなどをバイパス。 |
+| `ForceTransitionTo(state)` | すべてのガードを無視して遷移。TransitionOperation.Throttle、TransitionFilterなどをバイパス。 |
 | `TransitionTo(state)` | 指定状態へ直接遷移。 |
 | `Deactivate()` | FSMを一時停止。返されたハンドルをDisposeすると再開します。 |
 | `Interrupt(IInterrupt)` | 現在の状態に基づく非同期分岐ロジックを注入。キャンセルサポートあり。 |
