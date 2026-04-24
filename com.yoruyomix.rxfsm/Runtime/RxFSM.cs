@@ -38,6 +38,13 @@ namespace RxFSM
         public void Trigger<TTrigger>(TTrigger trigger) where TTrigger : struct
             => Evaluate(trigger);
 
+        public void Start(TState state, bool fireEnter)
+        {
+            if (_disposed) return;
+            _current = state;
+            if (fireEnter) FireEnter(state, state, null);
+        }
+
         internal void Evaluate(object trigger)
         {
             if (_disposed || trigger == null || _deactivateCount > 0) return;

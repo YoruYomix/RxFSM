@@ -14,5 +14,6 @@ namespace RxFSM
         void Interrupt(IInterrupt interrupt);
         void TransitionTo(TState to);
         void ForceTransitionTo(TState to);
+        void Start(TState state, bool fireEnter);
     }
 }
