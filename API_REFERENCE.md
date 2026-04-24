@@ -254,12 +254,11 @@ sm.EnterStateAsync(S.Attack,
 
 // State + Trigger filtered — (prev, trg, ct) — fires only when entering targetState via TTrigger
 sm.EnterStateAsync<CastSpell>(S.Casting,
-    async (TState prev, object trg, CancellationToken ct) =>
+    async (TState prev, CastSpell trg, CancellationToken ct) =>
     {
-        var spell = (CastSpell)trg;
-        mana -= spell.ManaCost;
-        try   { await CastAsync(spell, ct); }
-        catch (OperationCanceledException) { mana += spell.ManaCost * 0.5f; }
+        mana -= trg.ManaCost;
+        try   { await CastAsync(trg, ct); }
+        catch (OperationCanceledException) { mana += trg.ManaCost * 0.5f; }
     }, AsyncOperation.Switch);
 ```
 

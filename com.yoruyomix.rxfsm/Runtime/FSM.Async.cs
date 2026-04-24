@@ -118,14 +118,14 @@ namespace RxFSM
 
         public IDisposable EnterStateAsync<TTrigger>(
             TState targetState,
-            Func<TState, object, CancellationToken, Task> callback,
+            Func<TState, TTrigger, CancellationToken, Task> callback,
             AsyncOperation policy)
             where TTrigger : struct
         {
             var sub = new AsyncSub { Policy = policy, HasTargetState = true, TargetState = targetState };
             (_asyncSubs ??= new List<AsyncSub>()).Add(sub);
 
-            var enterHandle = EnterState<TTrigger>(targetState, (TState prev, object trg) =>
+            var enterHandle = EnterState<TTrigger>(targetState, (TState prev, TTrigger trg) =>
             {
                 var capturedPrev = prev;
                 var capturedTrg  = trg;
