@@ -114,6 +114,37 @@ namespace RxFSM
             });
         }
 
+        // ── State-filtered — (prev, trg, ct) ────────────────────────────────────
+
+        public IDisposable EnterStateAsync(
+            TState targetState,
+            Func<TState, object, CancellationToken, Task> callback,
+            TransitionOperation policy)
+        {
+            var sub = new AsyncSub { Policy = policy, HasTargetState = true, TargetState = targetState };
+            (_asyncSubs ??= new List<AsyncSub>()).Add(sub);
+
+            var enterHandle = EnterState(targetState, (prev, trg) =>
+            {
+                var capturedPrev = prev;
+                var capturedTrg  = trg;
+                HandleAsyncEntry(sub, targetState,
+                    ct => callback(capturedPrev, capturedTrg, ct));
+            });
+
+            IDisposable exitHandle = policy == TransitionOperation.Switch
+                ? ExitState(targetState, (next, trg) => sub.Cts?.Cancel())
+                : FSMDisposable.Empty;
+
+            return FSMDisposable.Create(() =>
+            {
+                _asyncSubs?.Remove(sub);
+                CancelSubAndRelease(sub);
+                enterHandle.Dispose();
+                exitHandle.Dispose();
+            });
+        }
+
         // ── State+Trigger filtered — (prev, trg, ct) ────────────────────────────
 
         public IDisposable EnterStateAsync<TTrigger>(

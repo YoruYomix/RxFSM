@@ -44,6 +44,10 @@ namespace RxFSM
             TState targetState,
             Func<TState, CancellationToken, Task> callback,
             TransitionOperation policy);
+        IDisposable EnterStateAsync(
+            TState targetState,
+            Func<TState, object, CancellationToken, Task> callback,
+            TransitionOperation policy);
         IDisposable EnterStateAsync<TTrigger>(
             TState targetState,
             Func<TState, TTrigger, CancellationToken, Task> callback,
