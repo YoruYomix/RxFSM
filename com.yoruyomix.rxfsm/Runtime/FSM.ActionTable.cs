@@ -4,12 +4,12 @@ namespace RxFSM
 {
     public sealed partial class FSM<TState>
     {
-        public IDisposable AddActionTable(TState state, IActionTable<TState> actionTable)
+        public IDisposable AddActionTable(IActionTable<TState> actionTable)
         {
             if (actionTable == null)
                 throw new ArgumentNullException(nameof(actionTable));
 
-            return actionTable.Register(this, state);
+            return actionTable.Register(this);
         }
     }
 }

@@ -9,6 +9,7 @@ namespace RxFSM.SourceGenerator
     [Generator(LanguageNames.CSharp)]
     public sealed class ActionTableGenerator : IIncrementalGenerator
     {
+        private const string ActionTableAttr = "RxFSM.ActionTableAttribute";
         private const string EnterAttr = "RxFSM.EnterStateAttribute";
         private const string ExitAttr = "RxFSM.ExitStateAttribute";
         private const string TickAttr = "RxFSM.TickStateAttribute";
@@ -18,7 +19,7 @@ namespace RxFSM.SourceGenerator
         private static readonly DiagnosticDescriptor MustBePartial = new DiagnosticDescriptor(
             "RXFSM001",
             "Action table class must be partial",
-            "Class '{0}' implements IActionTable<TState> but is not declared 'partial'; the source generator cannot emit its Register method.",
+            "Class '{0}' is marked [ActionTable] but is not declared 'partial'; the source generator cannot emit its Register method.",
             "RxFSM",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);
@@ -31,11 +32,19 @@ namespace RxFSM.SourceGenerator
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
+        private static readonly DiagnosticDescriptor StateMustBeEnum = new DiagnosticDescriptor(
+            "RXFSM003",
+            "ActionTable state must be an enum value",
+            "Class '{0}': [ActionTable(...)] argument must be an enum value (e.g. [ActionTable(MyState.Foo)]).",
+            "RxFSM",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
             var models = context.SyntaxProvider.CreateSyntaxProvider(
                     predicate: static (node, _) =>
-                        node is ClassDeclarationSyntax c && c.BaseList != null,
+                        node is ClassDeclarationSyntax c && c.AttributeLists.Count > 0,
                     transform: static (ctx, _) => GetModel(ctx))
                 .Where(static m => m is not null);
 
@@ -48,28 +57,30 @@ namespace RxFSM.SourceGenerator
             if (ctx.SemanticModel.GetDeclaredSymbol(decl) is not INamedTypeSymbol symbol)
                 return null;
 
-            // Find IActionTable<TState> among implemented interfaces.
-            INamedTypeSymbol? iface = null;
-            foreach (var i in symbol.AllInterfaces)
-            {
-                if (i.OriginalDefinition.ToDisplayString() == "RxFSM.IActionTable<TState>" ||
-                    i.ConstructedFrom.MetadataName == "IActionTable`1" &&
-                    i.ConstructedFrom.ContainingNamespace?.ToDisplayString() == "RxFSM")
-                {
-                    iface = i;
-                    break;
-                }
-            }
-
-            if (iface is null || iface.TypeArguments.Length != 1)
+            // Discover via [ActionTable(state)].
+            AttributeData? tableAttr = null;
+            foreach (var a in symbol.GetAttributes())
+                if (a.AttributeClass?.ToDisplayString() == ActionTableAttr) { tableAttr = a; break; }
+            if (tableAttr is null)
                 return null;
-
-            var tState = iface.TypeArguments[0];
-            var tStateFq = tState.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
             var isPartial = false;
             foreach (var m in decl.Modifiers)
                 if (m.ValueText == "partial") { isPartial = true; break; }
+
+            // The bound state determines TState (enum type) and the baked literal.
+            if (tableAttr.ConstructorArguments.Length != 1)
+                return new Model(null, symbol.Name, null, null, isPartial, decl.GetLocation(),
+                    ImmutableArray<Binding>.Empty, ImmutableArray<DiagInfo>.Empty, stateNotEnum: true);
+
+            var stateArg = tableAttr.ConstructorArguments[0];
+            var tState = stateArg.Type;
+            if (stateArg.Kind != TypedConstantKind.Enum || tState is not { TypeKind: TypeKind.Enum })
+                return new Model(null, symbol.Name, null, null, isPartial, decl.GetLocation(),
+                    ImmutableArray<Binding>.Empty, ImmutableArray<DiagInfo>.Empty, stateNotEnum: true);
+
+            var tStateFq = tState.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            var stateLiteral = $"({tStateFq}){stateArg.Value}";
 
             var bindings = ImmutableArray.CreateBuilder<Binding>();
             var diags = ImmutableArray.CreateBuilder<DiagInfo>();
@@ -168,14 +179,22 @@ namespace RxFSM.SourceGenerator
                 ns,
                 symbol.Name,
                 tStateFq,
+                stateLiteral,
                 isPartial,
                 decl.GetLocation(),
                 bindings.ToImmutable(),
-                diags.ToImmutable());
+                diags.ToImmutable(),
+                stateNotEnum: false);
         }
 
         private static void Emit(SourceProductionContext spc, Model model)
         {
+            if (model.StateNotEnum)
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(StateMustBeEnum, model.Location, model.ClassName));
+                return;
+            }
+
             foreach (var d in model.Diagnostics)
                 spc.ReportDiagnostic(Diagnostic.Create(InvalidSignature, d.Location, d.Message));
 
@@ -217,9 +236,10 @@ namespace RxFSM.SourceGenerator
             sb.AppendLine();
 
             sb.Append(indent).Append("    public global::System.IDisposable Register(global::RxFSM.FSM<")
-                .Append(model.TStateFq).Append("> fsm, ").Append(model.TStateFq).AppendLine(" state)");
+                .Append(model.TStateFq).AppendLine("> fsm)");
             sb.Append(indent).AppendLine("    {");
             sb.Append(indent).AppendLine("        FSM = fsm;");
+            sb.Append(indent).Append("        var state = ").Append(model.StateLiteral).AppendLine(";");
             sb.Append(indent).AppendLine("        var cd = new global::RxFSM.FSMCompositeDisposable();");
 
             foreach (var b in model.Bindings)
@@ -332,22 +352,27 @@ namespace RxFSM.SourceGenerator
         {
             public readonly string? Namespace;
             public readonly string ClassName;
-            public readonly string TStateFq;
+            public readonly string? TStateFq;
+            public readonly string? StateLiteral;
             public readonly bool IsPartial;
             public readonly Location Location;
             public readonly ImmutableArray<Binding> Bindings;
             public readonly ImmutableArray<DiagInfo> Diagnostics;
+            public readonly bool StateNotEnum;
 
-            public Model(string? ns, string className, string tStateFq, bool isPartial,
-                Location location, ImmutableArray<Binding> bindings, ImmutableArray<DiagInfo> diagnostics)
+            public Model(string? ns, string className, string? tStateFq, string? stateLiteral, bool isPartial,
+                Location location, ImmutableArray<Binding> bindings, ImmutableArray<DiagInfo> diagnostics,
+                bool stateNotEnum)
             {
                 Namespace = ns;
                 ClassName = className;
                 TStateFq = tStateFq;
+                StateLiteral = stateLiteral;
                 IsPartial = isPartial;
                 Location = location;
                 Bindings = bindings;
                 Diagnostics = diagnostics;
+                StateNotEnum = stateNotEnum;
             }
         }
     }
