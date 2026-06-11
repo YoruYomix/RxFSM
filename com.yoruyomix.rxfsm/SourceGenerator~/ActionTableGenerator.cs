@@ -100,9 +100,6 @@ namespace RxFSM.SourceGenerator
                 }
             }
 
-            if (bindings.Count == 0 && isPartial)
-                return null;
-
             string? ns = symbol.ContainingNamespace is { IsGlobalNamespace: false } n
                 ? n.ToDisplayString()
                 : null;
