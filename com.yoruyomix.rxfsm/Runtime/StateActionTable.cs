@@ -15,8 +15,7 @@ namespace RxFSM
         void TickState(TState prev, object trigger) { }
 
         [EditorBrowsable(EditorBrowsableState.Never)]
-        IDisposable Register(FSM<TState> fsm, TState state)
-            => StateActionTableRegistration.Register(this, fsm, state);
+        IDisposable Register(FSM<TState> fsm, TState state);
     }
 
     public abstract class StateActionTable<TState> : IStateActionTable<TState>
@@ -28,6 +27,9 @@ namespace RxFSM
         {
             set => FSM = value;
         }
+
+        IDisposable IStateActionTable<TState>.Register(FSM<TState> fsm, TState state)
+            => StateActionTableRegistration.Register((IStateActionTable<TState>)this, fsm, state);
     }
 
     public interface IStateActionTable<TState, TTrigger> : IStateActionTable<TState>
@@ -37,10 +39,6 @@ namespace RxFSM
         void EnterState(TState prev, TTrigger trigger) { }
         void ExitState(TState next, TTrigger trigger) { }
         void TickState(TState prev, TTrigger trigger) { }
-
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        IDisposable IStateActionTable<TState>.Register(FSM<TState> fsm, TState state)
-            => StateActionTableRegistration.Register(this, fsm, state);
     }
 
     public abstract class StateActionTable<TState, TTrigger> :
@@ -49,6 +47,8 @@ namespace RxFSM
         where TState : Enum
         where TTrigger : struct
     {
+        IDisposable IStateActionTable<TState>.Register(FSM<TState> fsm, TState state)
+            => StateActionTableRegistration.Register((IStateActionTable<TState, TTrigger>)this, fsm, state);
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]

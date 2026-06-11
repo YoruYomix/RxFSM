@@ -22,10 +22,6 @@ namespace RxFSM
     {
         UniTask EnterStateAsync(TState prev, object trigger, CancellationToken ct)
             => UniTask.CompletedTask;
-
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        IDisposable IStateActionTable<TState>.Register(FSM<TState> fsm, TState state)
-            => AsyncStateActionTableRegistration.Register(this, fsm, state);
     }
 
     public abstract class AsyncStateActionTable<TState> :
@@ -33,6 +29,8 @@ namespace RxFSM
         IAsyncStateActionTable<TState>
         where TState : Enum
     {
+        IDisposable IStateActionTable<TState>.Register(FSM<TState> fsm, TState state)
+            => AsyncStateActionTableRegistration.Register((IAsyncStateActionTable<TState>)this, fsm, state);
     }
 
     public interface IAsyncStateActionTable<TState, TTrigger> :
@@ -43,10 +41,6 @@ namespace RxFSM
     {
         UniTask EnterStateAsync(TState prev, TTrigger trigger, CancellationToken ct)
             => UniTask.CompletedTask;
-
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        IDisposable IStateActionTable<TState>.Register(FSM<TState> fsm, TState state)
-            => AsyncStateActionTableRegistration.Register(this, fsm, state);
     }
 
     public abstract class AsyncStateActionTable<TState, TTrigger> :
@@ -55,6 +49,8 @@ namespace RxFSM
         where TState : Enum
         where TTrigger : struct
     {
+        IDisposable IStateActionTable<TState>.Register(FSM<TState> fsm, TState state)
+            => AsyncStateActionTableRegistration.Register((IAsyncStateActionTable<TState, TTrigger>)this, fsm, state);
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
