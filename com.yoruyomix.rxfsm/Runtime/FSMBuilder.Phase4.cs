@@ -8,7 +8,7 @@ namespace RxFSM
         // ── Nested FSM children ──────────────────────────────────────────────────
 
         private List<(TState parentState, IFSM child)> _childFSMs;
-        private List<(TState state, StateActionTable<TState> actionTable)> _actionTables;
+        private List<(TState state, IActionTable<TState> actionTable)> _actionTables;
 
         public FSMBuilder<TState> Register(TState parentState, IFSM child)
         {
@@ -16,12 +16,12 @@ namespace RxFSM
             return this;
         }
 
-        public FSMBuilder<TState> AddActionTable(TState state, StateActionTable<TState> actionTable)
+        public FSMBuilder<TState> AddActionTable(TState state, IActionTable<TState> actionTable)
         {
             if (actionTable == null)
                 throw new ArgumentNullException(nameof(actionTable));
 
-            (_actionTables ??= new List<(TState, StateActionTable<TState>)>()).Add((state, actionTable));
+            (_actionTables ??= new List<(TState, IActionTable<TState>)>()).Add((state, actionTable));
             return this;
         }
 
