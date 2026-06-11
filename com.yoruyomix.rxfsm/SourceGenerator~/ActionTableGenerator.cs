@@ -9,16 +9,24 @@ namespace RxFSM.SourceGenerator
     [Generator(LanguageNames.CSharp)]
     public sealed class ActionTableGenerator : IIncrementalGenerator
     {
-        private const string InterfaceMetadataName = "RxFSM.IActionTable`1";
         private const string EnterAttr = "RxFSM.EnterStateAttribute";
         private const string ExitAttr = "RxFSM.ExitStateAttribute";
         private const string TickAttr = "RxFSM.TickStateAttribute";
         private const string EnterAsyncAttr = "RxFSM.EnterStateAsyncAttribute";
+        private const string CancellationToken = "System.Threading.CancellationToken";
 
         private static readonly DiagnosticDescriptor MustBePartial = new DiagnosticDescriptor(
             "RXFSM001",
             "Action table class must be partial",
             "Class '{0}' implements IActionTable<TState> but is not declared 'partial'; the source generator cannot emit its Register method.",
+            "RxFSM",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        private static readonly DiagnosticDescriptor InvalidSignature = new DiagnosticDescriptor(
+            "RXFSM002",
+            "Invalid action-table callback signature",
+            "{0}",
             "RxFSM",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);
@@ -56,12 +64,15 @@ namespace RxFSM.SourceGenerator
             if (iface is null || iface.TypeArguments.Length != 1)
                 return null;
 
+            var tState = iface.TypeArguments[0];
+            var tStateFq = tState.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
             var isPartial = false;
             foreach (var m in decl.Modifiers)
                 if (m.ValueText == "partial") { isPartial = true; break; }
 
-            var tStateFq = iface.TypeArguments[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             var bindings = ImmutableArray.CreateBuilder<Binding>();
+            var diags = ImmutableArray.CreateBuilder<DiagInfo>();
 
             foreach (var member in symbol.GetMembers())
             {
@@ -81,14 +92,63 @@ namespace RxFSM.SourceGenerator
                         default: continue;
                     }
 
-                    var triggerIndex = 1; // params: (TState, trigger[, ct])
+                    // Match parameters by ROLE (type), independent of order:
+                    //   TState        -> state    ('S')
+                    //   struct/object -> trigger  ('T')   (object = any trigger, struct = typed filter)
+                    //   CancellationToken -> ct   ('C')   (async only)
+                    var roles = new StringBuilder();
+                    var mode = TriggerMode.None;
                     string? triggerFq = null;
-                    var isObjectTrigger = true;
-                    if (method.Parameters.Length > triggerIndex)
+                    string? error = null;
+                    int stateCount = 0, trigCount = 0, ctCount = 0;
+
+                    foreach (var p in method.Parameters)
                     {
-                        var trig = method.Parameters[triggerIndex].Type;
-                        isObjectTrigger = trig.SpecialType == SpecialType.System_Object;
-                        triggerFq = trig.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                        var pt = p.Type;
+                        if (SymbolEqualityComparer.Default.Equals(pt, tState))
+                        {
+                            roles.Append('S'); stateCount++;
+                        }
+                        else if (pt.ToDisplayString() == CancellationToken)
+                        {
+                            roles.Append('C'); ctCount++;
+                        }
+                        else if (pt.SpecialType == SpecialType.System_Object)
+                        {
+                            roles.Append('T'); trigCount++;
+                            mode = TriggerMode.Object;
+                        }
+                        else if (pt.IsValueType)
+                        {
+                            roles.Append('T'); trigCount++;
+                            mode = TriggerMode.Typed;
+                            triggerFq = pt.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                        }
+                        else
+                        {
+                            error = $"'{method.Name}': unsupported parameter type '{pt.ToDisplayString()}'. " +
+                                    $"Callback parameters must be {tState.Name} (state), a trigger struct, object, or CancellationToken.";
+                            break;
+                        }
+                    }
+
+                    if (error == null)
+                    {
+                        if (stateCount > 1)
+                            error = $"'{method.Name}': more than one state ({tState.Name}) parameter.";
+                        else if (trigCount > 1)
+                            error = $"'{method.Name}': more than one trigger parameter.";
+                        else if (kind == Kind.EnterAsync && ctCount > 1)
+                            error = $"'{method.Name}': more than one CancellationToken parameter.";
+                        else if (kind != Kind.EnterAsync && ctCount > 0)
+                            error = $"'{method.Name}': CancellationToken is only allowed on [EnterStateAsync].";
+                    }
+
+                    if (error != null)
+                    {
+                        var loc = method.Locations.Length > 0 ? method.Locations[0] : Location.None;
+                        diags.Add(new DiagInfo(error, loc));
+                        continue;
                     }
 
                     var op = 0; // TransitionOperation.Switch
@@ -96,7 +156,7 @@ namespace RxFSM.SourceGenerator
                         attr.ConstructorArguments[0].Value is int v)
                         op = v;
 
-                    bindings.Add(new Binding(kind, method.Name, isObjectTrigger, triggerFq, op));
+                    bindings.Add(new Binding(kind, method.Name, roles.ToString(), mode, triggerFq, op));
                 }
             }
 
@@ -110,11 +170,15 @@ namespace RxFSM.SourceGenerator
                 tStateFq,
                 isPartial,
                 decl.GetLocation(),
-                bindings.ToImmutable());
+                bindings.ToImmutable(),
+                diags.ToImmutable());
         }
 
         private static void Emit(SourceProductionContext spc, Model model)
         {
+            foreach (var d in model.Diagnostics)
+                spc.ReportDiagnostic(Diagnostic.Create(InvalidSignature, d.Location, d.Message));
+
             if (!model.IsPartial)
             {
                 spc.ReportDiagnostic(Diagnostic.Create(MustBePartial, model.Location, model.ClassName));
@@ -159,9 +223,7 @@ namespace RxFSM.SourceGenerator
             sb.Append(indent).AppendLine("        var cd = new global::RxFSM.FSMCompositeDisposable();");
 
             foreach (var b in model.Bindings)
-            {
                 sb.Append(indent).Append("        ").AppendLine(BindingStatement(model, b));
-            }
 
             sb.Append(indent).AppendLine("        return cd;");
             sb.Append(indent).AppendLine("    }");
@@ -174,28 +236,58 @@ namespace RxFSM.SourceGenerator
             spc.AddSource(hint, sb.ToString());
         }
 
+        // Builds the user-method argument list in the declared (role) order.
+        private static string CallArgs(string roles, string triggerArg)
+        {
+            var parts = new List<string>(roles.Length);
+            foreach (var c in roles)
+                parts.Add(c switch { 'S' => "__p", 'T' => triggerArg, 'C' => "__ct", _ => "" });
+            return string.Join(", ", parts);
+        }
+
         private static string BindingStatement(Model model, Binding b)
         {
             var m = b.MethodName;
+            var s = model.TStateFq;
+            const string CT = "global::System.Threading.CancellationToken";
+            var op = $"(global::RxFSM.TransitionOperation){b.Operation}";
+
             switch (b.Kind)
             {
                 case Kind.Enter:
-                    return b.IsObjectTrigger
-                        ? $"cd.Add(fsm.EnterState(state, {m}));"
-                        : $"cd.Add(fsm.EnterState<{b.TriggerFq}>(state, {m}));";
-
                 case Kind.Exit:
-                    return b.IsObjectTrigger
-                        ? $"cd.Add(fsm.ExitState(state, {m}));"
-                        : $"cd.Add(fsm.ExitState<{b.TriggerFq}>(state, {m}));";
+                {
+                    var fn = b.Kind == Kind.Enter ? "EnterState" : "ExitState";
+                    var args = CallArgs(b.Roles, "__t");
+                    return b.Mode == TriggerMode.Typed
+                        ? $"cd.Add(fsm.{fn}<{b.TriggerFq}>(state, ({s} __p, {b.TriggerFq} __t) => {m}({args})));"
+                        : $"cd.Add(fsm.{fn}(state, ({s} __p, object __t) => {m}({args})));";
+                }
 
                 case Kind.Tick:
-                    return b.IsObjectTrigger
-                        ? $"cd.Add(fsm.TickState(state, {m}));"
-                        : $"cd.Add(fsm.TickState(state, ({model.TStateFq} __p, object __t) => {{ if (__t is {b.TriggerFq} __v) {m}(__p, __v); }}));";
+                {
+                    if (b.Mode == TriggerMode.Typed)
+                    {
+                        var args = CallArgs(b.Roles, "__v");
+                        return $"cd.Add(fsm.TickState(state, ({s} __p, object __t) => {{ if (__t is {b.TriggerFq} __v) {m}({args}); }}));";
+                    }
+                    var oargs = CallArgs(b.Roles, "__t");
+                    return $"cd.Add(fsm.TickState(state, ({s} __p, object __t) => {m}({oargs})));";
+                }
 
                 case Kind.EnterAsync:
-                    return $"cd.Add(fsm.EnterStateAsync<{b.TriggerFq}>(state, ({model.TStateFq} __p, {b.TriggerFq} __t, global::System.Threading.CancellationToken __ct) => {m}(__p, __t, __ct).AsTask(), (global::RxFSM.TransitionOperation){b.Operation}));";
+                {
+                    var args = CallArgs(b.Roles, "__t");
+                    return b.Mode switch
+                    {
+                        TriggerMode.Typed =>
+                            $"cd.Add(fsm.EnterStateAsync<{b.TriggerFq}>(state, ({s} __p, {b.TriggerFq} __t, {CT} __ct) => {m}({args}).AsTask(), {op}));",
+                        TriggerMode.Object =>
+                            $"cd.Add(fsm.EnterStateAsync(state, ({s} __p, object __t, {CT} __ct) => {m}({args}).AsTask(), {op}));",
+                        _ =>
+                            $"cd.Add(fsm.EnterStateAsync(state, ({s} __p, {CT} __ct) => {m}({args}).AsTask(), {op}));",
+                    };
+                }
 
                 default:
                     return string.Empty;
@@ -203,22 +295,36 @@ namespace RxFSM.SourceGenerator
         }
 
         private enum Kind { Enter, Exit, Tick, EnterAsync }
+        private enum TriggerMode { None, Object, Typed }
 
         private readonly struct Binding
         {
             public readonly Kind Kind;
             public readonly string MethodName;
-            public readonly bool IsObjectTrigger;
+            public readonly string Roles;       // ordered chars: 'S' state, 'T' trigger, 'C' ct
+            public readonly TriggerMode Mode;
             public readonly string? TriggerFq;
             public readonly int Operation;
 
-            public Binding(Kind kind, string methodName, bool isObjectTrigger, string? triggerFq, int operation)
+            public Binding(Kind kind, string methodName, string roles, TriggerMode mode, string? triggerFq, int operation)
             {
                 Kind = kind;
                 MethodName = methodName;
-                IsObjectTrigger = isObjectTrigger;
+                Roles = roles;
+                Mode = mode;
                 TriggerFq = triggerFq;
                 Operation = operation;
+            }
+        }
+
+        private readonly struct DiagInfo
+        {
+            public readonly string Message;
+            public readonly Location Location;
+            public DiagInfo(string message, Location location)
+            {
+                Message = message;
+                Location = location;
             }
         }
 
@@ -230,9 +336,10 @@ namespace RxFSM.SourceGenerator
             public readonly bool IsPartial;
             public readonly Location Location;
             public readonly ImmutableArray<Binding> Bindings;
+            public readonly ImmutableArray<DiagInfo> Diagnostics;
 
             public Model(string? ns, string className, string tStateFq, bool isPartial,
-                Location location, ImmutableArray<Binding> bindings)
+                Location location, ImmutableArray<Binding> bindings, ImmutableArray<DiagInfo> diagnostics)
             {
                 Namespace = ns;
                 ClassName = className;
@@ -240,6 +347,7 @@ namespace RxFSM.SourceGenerator
                 IsPartial = isPartial;
                 Location = location;
                 Bindings = bindings;
+                Diagnostics = diagnostics;
             }
         }
     }
