@@ -8,10 +8,8 @@ namespace RxFSM
     /// Restricted view of the FSM for callers that may only observe state changes.
     /// Trigger operations are NOT exposed.
     /// </summary>
-    public interface IFSMObservable<TState> where TState : Enum
+    public interface IFSMObservable<TState> : IFSMState<TState> where TState : Enum
     {
-        TState State { get; }
-
         // ── EnterState ────────────────────────────────────────────────────────────
         IDisposable EnterState(Action<TState, TState> callback);
         IDisposable EnterState(Action<TState, TState, object> callback);
