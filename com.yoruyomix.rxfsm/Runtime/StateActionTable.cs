@@ -1,96 +1,148 @@
 using System;
+using System.ComponentModel;
 using System.Reflection;
 
 namespace RxFSM
 {
-    public abstract class StateActionTableBase<TState>
+    public interface IStateActionTable<TState>
         where TState : Enum
     {
-        public virtual void EnterState(TState prev, object trigger) { }
-        public virtual void ExitState(TState next, object trigger) { }
-        public virtual void TickState(TState prev, object trigger) { }
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        FSM<TState> StateMachine { set { } }
 
-        protected internal virtual IDisposable Register(FSM<TState> fsm, TState state)
+        void EnterState(TState prev, object trigger) { }
+        void ExitState(TState next, object trigger) { }
+        void TickState(TState prev, object trigger) { }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        IDisposable Register(FSM<TState> fsm, TState state)
+            => StateActionTableRegistration.Register(this, fsm, state);
+    }
+
+    public abstract class StateActionTable<TState> : IStateActionTable<TState>
+        where TState : Enum
+    {
+        protected FSM<TState> FSM { get; private set; }
+
+        FSM<TState> IStateActionTable<TState>.StateMachine
         {
+            set => FSM = value;
+        }
+    }
+
+    public interface IStateActionTable<TState, TTrigger> : IStateActionTable<TState>
+        where TState : Enum
+        where TTrigger : struct
+    {
+        void EnterState(TState prev, TTrigger trigger) { }
+        void ExitState(TState next, TTrigger trigger) { }
+        void TickState(TState prev, TTrigger trigger) { }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        IDisposable IStateActionTable<TState>.Register(FSM<TState> fsm, TState state)
+            => StateActionTableRegistration.Register(this, fsm, state);
+    }
+
+    public abstract class StateActionTable<TState, TTrigger> :
+        StateActionTable<TState>,
+        IStateActionTable<TState, TTrigger>
+        where TState : Enum
+        where TTrigger : struct
+    {
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public static class StateActionTableRegistration
+    {
+        public static IDisposable Register<TState>(
+            IStateActionTable<TState> actionTable,
+            FSM<TState> fsm,
+            TState state)
+            where TState : Enum
+        {
+            if (actionTable == null)
+                throw new ArgumentNullException(nameof(actionTable));
+
             var cd = new FSMCompositeDisposable();
-            var actionType = GetType();
+            actionTable.StateMachine = fsm;
 
-            if (IsOverridden(actionType, nameof(EnterState), typeof(TState), typeof(object)))
-                fsm.EnterState(state, EnterState).AddTo(cd);
+            var actionType = actionTable.GetType();
+            var interfaceType = typeof(IStateActionTable<TState>);
 
-            if (IsOverridden(actionType, nameof(ExitState), typeof(TState), typeof(object)))
-                fsm.ExitState(state, ExitState).AddTo(cd);
+            if (HasImplementation(actionType, interfaceType, nameof(IStateActionTable<TState>.EnterState),
+                    typeof(TState), typeof(object)))
+                fsm.EnterState(state, actionTable.EnterState).AddTo(cd);
 
-            if (IsOverridden(actionType, nameof(TickState), typeof(TState), typeof(object)))
-                fsm.TickState(state, TickState).AddTo(cd);
+            if (HasImplementation(actionType, interfaceType, nameof(IStateActionTable<TState>.ExitState),
+                    typeof(TState), typeof(object)))
+                fsm.ExitState(state, actionTable.ExitState).AddTo(cd);
+
+            if (HasImplementation(actionType, interfaceType, nameof(IStateActionTable<TState>.TickState),
+                    typeof(TState), typeof(object)))
+                fsm.TickState(state, actionTable.TickState).AddTo(cd);
 
             return cd;
         }
 
-        protected static bool IsOverridden(Type actionType, string name, params Type[] parameterTypes)
-            => GetOverriddenMethod(actionType, name, parameterTypes) != null;
-
-        protected static MethodInfo GetOverriddenMethod(Type actionType, string name, params Type[] parameterTypes)
+        public static IDisposable Register<TState, TTrigger>(
+            IStateActionTable<TState, TTrigger> actionTable,
+            FSM<TState> fsm,
+            TState state)
+            where TState : Enum
+            where TTrigger : struct
         {
-            var method = actionType.GetMethod(
+            if (actionTable == null)
+                throw new ArgumentNullException(nameof(actionTable));
+
+            var cd = new FSMCompositeDisposable();
+            Register((IStateActionTable<TState>)actionTable, fsm, state).AddTo(cd);
+
+            var actionType = actionTable.GetType();
+            var interfaceType = typeof(IStateActionTable<TState, TTrigger>);
+
+            if (HasImplementation(actionType, interfaceType, nameof(IStateActionTable<TState, TTrigger>.EnterState),
+                    typeof(TState), typeof(TTrigger)))
+                fsm.EnterState<TTrigger>(state, (Action<TState, TTrigger>)actionTable.EnterState).AddTo(cd);
+
+            if (HasImplementation(actionType, interfaceType, nameof(IStateActionTable<TState, TTrigger>.ExitState),
+                    typeof(TState), typeof(TTrigger)))
+                fsm.ExitState<TTrigger>(state, actionTable.ExitState).AddTo(cd);
+
+            if (HasImplementation(actionType, interfaceType, nameof(IStateActionTable<TState, TTrigger>.TickState),
+                    typeof(TState), typeof(TTrigger)))
+                fsm.TickState(state, (prev, trigger) =>
+                {
+                    if (trigger is TTrigger typed)
+                        actionTable.TickState(prev, typed);
+                }).AddTo(cd);
+
+            return cd;
+        }
+
+        public static bool HasImplementation(Type actionType, Type interfaceType, string name, params Type[] parameterTypes)
+        {
+            var method = interfaceType.GetMethod(
                 name,
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                 null,
                 parameterTypes,
                 null);
 
-            if (method == null || !method.IsVirtual)
-                return null;
+            if (method == null)
+                return false;
 
-            var baseDefinition = method.GetBaseDefinition();
-            return baseDefinition.DeclaringType != method.DeclaringType ? method : null;
-        }
+            var map = actionType.GetInterfaceMap(interfaceType);
 
-    }
+            for (var i = 0; i < map.InterfaceMethods.Length; i++)
+            {
+                if (map.InterfaceMethods[i] != method)
+                    continue;
 
-    public abstract class StateActionTableBase<TState, TTrigger> : StateActionTableBase<TState>
-        where TState : Enum
-        where TTrigger : struct
-    {
-        public sealed override void EnterState(TState prev, object trigger)
-        {
-            if (trigger is TTrigger typed)
-                EnterState(prev, typed);
-        }
+                var target = map.TargetMethods[i];
+                return target.DeclaringType != null && !target.DeclaringType.IsInterface;
+            }
 
-        public virtual void EnterState(TState prev, TTrigger trigger) { }
-
-        public sealed override void ExitState(TState next, object trigger)
-        {
-            if (trigger is TTrigger typed)
-                ExitState(next, typed);
-        }
-
-        public virtual void ExitState(TState next, TTrigger trigger) { }
-
-        public sealed override void TickState(TState prev, object trigger)
-        {
-            if (trigger is TTrigger typed)
-                TickState(prev, typed);
-        }
-
-        public virtual void TickState(TState prev, TTrigger trigger) { }
-
-        protected internal override IDisposable Register(FSM<TState> fsm, TState state)
-        {
-            var cd = new FSMCompositeDisposable();
-            var actionType = GetType();
-
-            if (IsOverridden(actionType, nameof(EnterState), typeof(TState), typeof(TTrigger)))
-                fsm.EnterState<TTrigger>(state, (Action<TState, TTrigger>)EnterState).AddTo(cd);
-
-            if (IsOverridden(actionType, nameof(ExitState), typeof(TState), typeof(TTrigger)))
-                fsm.ExitState<TTrigger>(state, ExitState).AddTo(cd);
-
-            if (IsOverridden(actionType, nameof(TickState), typeof(TState), typeof(TTrigger)))
-                fsm.TickState(state, TickState).AddTo(cd);
-
-            return cd;
+            return false;
         }
     }
 }
