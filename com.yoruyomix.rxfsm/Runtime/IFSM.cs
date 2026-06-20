@@ -12,6 +12,13 @@ namespace RxFSM
     {
         Enum CurrentState { get; }
         void Evaluate(object trigger);
+
+        /// <summary>
+        /// Parent-to-child propagation entry. Returns true if the trigger caused a
+        /// transition in this FSM or its active subtree. Unlike <see cref="Evaluate"/>,
+        /// it never fires the unhandled-trigger callback — only the root reports that.
+        /// </summary>
+        bool TryEvaluate(object trigger);
         IReadOnlyList<Enum> GetActiveStateHierarchy();
 
         // Lifecycle notifications from parent

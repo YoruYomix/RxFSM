@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace RxFSM
 {
-    public enum CallbackType { EnterState, ExitState, TickState, EnterStateAsync }
+    public enum CallbackType { EnterState, ExitState, TickState, EnterStateAsync, UnhandledTrigger }
 
     public sealed partial class FSM<TState> : IDisposable where TState : Enum
     {
@@ -38,6 +38,8 @@ namespace RxFSM
         public void Trigger<TTrigger>(TTrigger trigger) where TTrigger : struct
             => Evaluate(trigger);
 
+        // Root entry (Trigger / IFSM.Evaluate). Fires OnUnhandledTrigger when a
+        // trigger produces no transition anywhere in the active hierarchy.
         internal void Evaluate(object trigger)
         {
             if (_disposed || trigger == null || _deactivateCount > 0) return;
@@ -51,9 +53,15 @@ namespace RxFSM
             _evaluating = true;
             try
             {
-                ProcessEvaluate(trigger);
+                if (!ProcessEvaluate(trigger))
+                    FireUnhandled(trigger);
+
                 while (_pendingTriggers.Count > 0)
-                    ProcessEvaluate(_pendingTriggers.Dequeue());
+                {
+                    var pending = _pendingTriggers.Dequeue();
+                    if (!ProcessEvaluate(pending))
+                        FireUnhandled(pending);
+                }
             }
             finally
             {
@@ -61,7 +69,38 @@ namespace RxFSM
             }
         }
 
-        private void ProcessEvaluate(object trigger)
+        // Child-propagation entry. Returns whether the trigger was handled
+        // (transition occurred) somewhere in this subtree. Never fires
+        // OnUnhandledTrigger — only the root decides "unhandled".
+        internal bool TryEvaluate(object trigger)
+        {
+            if (_disposed || trigger == null || _deactivateCount > 0) return false;
+
+            if (_evaluating)
+            {
+                // Deferred to this FSM's own queue — cannot report a result
+                // synchronously, so treat as not-yet-handled for bubbling.
+                _pendingTriggers.Enqueue(trigger);
+                return false;
+            }
+
+            _evaluating = true;
+            try
+            {
+                bool handled = ProcessEvaluate(trigger);
+                while (_pendingTriggers.Count > 0)
+                    ProcessEvaluate(_pendingTriggers.Dequeue());
+                return handled;
+            }
+            finally
+            {
+                _evaluating = false;
+            }
+        }
+
+        // Returns true if the trigger caused (or launched an async) transition in
+        // this layer or in the active child subtree.
+        private bool ProcessEvaluate(object trigger)
         {
             bool transitioned = false;
 
@@ -95,10 +134,13 @@ namespace RxFSM
                 break;
             }
 
-            // Propagate trigger to active child if no transition occurred at this layer
+            // Propagate trigger to active child if no transition occurred at this layer.
+            // The child reports back whether it (or its own subtree) handled it.
             if (!transitioned && _children != null &&
                 _children.TryGetValue(_current, out var activeChild))
-                activeChild.Evaluate(trigger);
+                return activeChild.TryEvaluate(trigger);
+
+            return transitioned;
         }
 
         public void TransitionTo(TState to)

@@ -28,6 +28,8 @@ namespace RxFSM
 
         void IFSM.Evaluate(object trigger) => Evaluate(trigger);
 
+        bool IFSM.TryEvaluate(object trigger) => TryEvaluate(trigger);
+
         void IFSM.IncrementDeactivate()
         {
             _deactivateCount++;

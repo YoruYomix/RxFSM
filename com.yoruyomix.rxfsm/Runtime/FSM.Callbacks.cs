@@ -25,6 +25,11 @@ namespace RxFSM
         private Dictionary<(TState, Type), List<Action<TState, object>>> _onEnterStateByTrigger;
         private Dictionary<(TState, Type), List<Action<TState, object>>> _onExitStateByTrigger;
 
+        // Unhandled-trigger: fired when a trigger produces no transition anywhere
+        // in the active hierarchy. General (any trigger) + trigger-type-filtered.
+        private List<Action<TState, object>>                  _onUnhandledList;
+        private Dictionary<Type, List<Action<TState, object>>> _onUnhandledByTrigger;
+
         // ── EnterState overloads ─────────────────────────────────────────────────
 
         public IDisposable EnterState(Action<TState, TState> callback)
@@ -126,6 +131,55 @@ namespace RxFSM
             Action<TState, object> wrapper = (next, trg) => callback(next, (TTrigger)trg);
             list.Add(wrapper);
             return FSMDisposable.Create(() => list.Remove(wrapper));
+        }
+
+        // ── OnUnhandledTrigger overloads ──────────────────────────────────────────
+
+        /// <summary>
+        /// Registers a callback fired when a trigger is evaluated but no transition
+        /// condition is satisfied anywhere in the active state hierarchy. The trigger
+        /// is passed boxed as <see cref="object"/>; arg order is (currentState, trigger).
+        /// </summary>
+        public IDisposable OnUnhandledTrigger(Action<TState, object> callback)
+        {
+            (_onUnhandledList ??= new List<Action<TState, object>>()).Add(callback);
+            return FSMDisposable.Create(() => _onUnhandledList?.Remove(callback));
+        }
+
+        /// <summary>
+        /// Type-filtered variant: fires only when a trigger of type
+        /// <typeparamref name="TTrigger"/> goes unhandled. The trigger is unboxed for you.
+        /// </summary>
+        public IDisposable OnUnhandledTrigger<TTrigger>(Action<TState, TTrigger> callback)
+            where TTrigger : struct
+        {
+            _onUnhandledByTrigger ??= new Dictionary<Type, List<Action<TState, object>>>();
+            var key = typeof(TTrigger);
+            if (!_onUnhandledByTrigger.TryGetValue(key, out var list))
+                _onUnhandledByTrigger[key] = list = new List<Action<TState, object>>();
+            Action<TState, object> wrapper = (state, trg) => callback(state, (TTrigger)trg);
+            list.Add(wrapper);
+            return FSMDisposable.Create(() => list.Remove(wrapper));
+        }
+
+        // ── FireUnhandled ─────────────────────────────────────────────────────────
+
+        private void FireUnhandled(object trg)
+        {
+            if (_onUnhandledList != null)
+                foreach (var cb in _onUnhandledList.ToArray())
+                {
+                    var c = cb;
+                    SafeInvoke(() => c(_current, trg), trg, CallbackType.UnhandledTrigger);
+                }
+
+            if (trg != null && _onUnhandledByTrigger != null &&
+                _onUnhandledByTrigger.TryGetValue(trg.GetType(), out var trigList))
+                foreach (var cb in trigList.ToArray())
+                {
+                    var c = cb;
+                    SafeInvoke(() => c(_current, trg), trg, CallbackType.UnhandledTrigger);
+                }
         }
 
         // ── FireEnter ────────────────────────────────────────────────────────────
@@ -233,6 +287,8 @@ namespace RxFSM
             _onExitByTrigger?.Clear();
             _onEnterStateByTrigger?.Clear();
             _onExitStateByTrigger?.Clear();
+            _onUnhandledList?.Clear();
+            _onUnhandledByTrigger?.Clear();
         }
     }
 }
