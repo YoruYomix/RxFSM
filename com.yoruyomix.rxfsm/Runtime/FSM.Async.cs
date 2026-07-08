@@ -21,6 +21,130 @@ namespace RxFSM
         private List<AsyncSub>         _asyncSubs;
         private Dictionary<TState, int> _activeDropCount;  // Drop-only counter (separate from _asyncThrottleCount)
 
+        // ── ExitStateAsync ──────────────────────────────────────────────────────
+
+        private class ExitAsyncSub
+        {
+            public Func<TState, TState, object, CancellationToken, Task> Callback;
+            public bool HasTargetState;
+            public TState TargetState;
+            public Type TriggerType;
+        }
+
+        private List<ExitAsyncSub> _exitAsyncSubs;
+        private CancellationTokenSource _exitAsyncCts;
+        private bool _exitAsyncRunning;
+
+        public IDisposable ExitStateAsync(
+            Func<TState, TState, CancellationToken, Task> callback)
+        {
+            return AddExitAsyncSub(new ExitAsyncSub
+            {
+                Callback = (cur, next, trg, ct) => callback(cur, next, ct)
+            });
+        }
+
+        public IDisposable ExitStateAsync(
+            Func<TState, TState, object, CancellationToken, Task> callback)
+        {
+            return AddExitAsyncSub(new ExitAsyncSub { Callback = callback });
+        }
+
+        public IDisposable ExitStateAsync(
+            TState targetState,
+            Func<TState, CancellationToken, Task> callback)
+        {
+            return AddExitAsyncSub(new ExitAsyncSub
+            {
+                HasTargetState = true,
+                TargetState = targetState,
+                Callback = (cur, next, trg, ct) => callback(next, ct)
+            });
+        }
+
+        public IDisposable ExitStateAsync(
+            TState targetState,
+            Func<TState, object, CancellationToken, Task> callback)
+        {
+            return AddExitAsyncSub(new ExitAsyncSub
+            {
+                HasTargetState = true,
+                TargetState = targetState,
+                Callback = (cur, next, trg, ct) => callback(next, trg, ct)
+            });
+        }
+
+        public IDisposable ExitStateAsync<TTrigger>(
+            TState targetState,
+            Func<TState, TTrigger, CancellationToken, Task> callback)
+            where TTrigger : struct
+        {
+            return AddExitAsyncSub(new ExitAsyncSub
+            {
+                HasTargetState = true,
+                TargetState = targetState,
+                TriggerType = typeof(TTrigger),
+                Callback = (cur, next, trg, ct) => callback(next, (TTrigger)trg, ct)
+            });
+        }
+
+        private IDisposable AddExitAsyncSub(ExitAsyncSub sub)
+        {
+            (_exitAsyncSubs ??= new List<ExitAsyncSub>()).Add(sub);
+            return FSMDisposable.Create(() => _exitAsyncSubs?.Remove(sub));
+        }
+
+        internal bool HasMatchingExitAsync(TState cur, object trigger)
+        {
+            if (_exitAsyncSubs == null || _exitAsyncSubs.Count == 0) return false;
+
+            var triggerType = trigger?.GetType();
+            foreach (var sub in _exitAsyncSubs)
+            {
+                if (sub.HasTargetState && !sub.TargetState.Equals(cur)) continue;
+                if (sub.TriggerType != null && sub.TriggerType != triggerType) continue;
+                return true;
+            }
+
+            return false;
+        }
+
+        internal async Task RunExitStateAsync(TState cur, TState next, object trigger)
+        {
+            if (_exitAsyncSubs == null || _exitAsyncSubs.Count == 0) return;
+
+            var triggerType = trigger?.GetType();
+            var cts = new CancellationTokenSource();
+            _exitAsyncCts = cts;
+            _exitAsyncRunning = true;
+
+            try
+            {
+                foreach (var sub in _exitAsyncSubs.ToArray())
+                {
+                    if (sub.HasTargetState && !sub.TargetState.Equals(cur)) continue;
+                    if (sub.TriggerType != null && sub.TriggerType != triggerType) continue;
+
+                    try
+                    {
+                        await sub.Callback(cur, next, trigger, cts.Token);
+                    }
+                    catch (OperationCanceledException) { }
+                    catch (Exception ex)
+                    {
+                        OnError?.Invoke(ex, trigger, CallbackType.ExitStateAsync);
+                    }
+                }
+            }
+            finally
+            {
+                if (_exitAsyncCts == cts)
+                    _exitAsyncCts = null;
+                _exitAsyncRunning = false;
+                cts.Dispose();
+            }
+        }
+
         // ── Unfiltered — (cur, prev, ct) ─────────────────────────────────────────
 
         public IDisposable EnterStateAsync(
@@ -306,19 +430,26 @@ namespace RxFSM
 
         internal void CancelAllAsyncCts()
         {
-            if (_asyncSubs == null) return;
-            foreach (var sub in _asyncSubs)
-                sub.Cts?.Cancel();
+            if (_asyncSubs != null)
+            {
+                foreach (var sub in _asyncSubs)
+                    sub.Cts?.Cancel();
+            }
+            _exitAsyncCts?.Cancel();
         }
 
         internal void CancelAsyncCtsForState(TState state)
         {
-            if (_asyncSubs == null) return;
-            foreach (var sub in _asyncSubs)
+            if (_asyncSubs != null)
             {
-                if (!sub.HasTargetState || sub.TargetState.Equals(state))
-                    sub.Cts?.Cancel();
+                foreach (var sub in _asyncSubs)
+                {
+                    if (!sub.HasTargetState || sub.TargetState.Equals(state))
+                        sub.Cts?.Cancel();
+                }
             }
+            if (_exitAsyncRunning && State.Equals(state))
+                _exitAsyncCts?.Cancel();
         }
 
         private void CancelSubAndRelease(AsyncSub sub)
@@ -343,10 +474,14 @@ namespace RxFSM
 
         private void DisposeAsync()
         {
-            if (_asyncSubs == null) return;
-            foreach (var sub in _asyncSubs)
-                sub.Cts?.Cancel();
-            _asyncSubs.Clear();
+            if (_asyncSubs != null)
+            {
+                foreach (var sub in _asyncSubs)
+                    sub.Cts?.Cancel();
+                _asyncSubs.Clear();
+            }
+            _exitAsyncCts?.Cancel();
+            _exitAsyncSubs?.Clear();
             _activeDropCount?.Clear();
         }
     }

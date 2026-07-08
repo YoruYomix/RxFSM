@@ -51,5 +51,21 @@ namespace RxFSM
             Func<TState, TTrigger, CancellationToken, Task> callback,
             TransitionOperation policy)
             where TTrigger : struct;
+
+        // ── ExitStateAsync ────────────────────────────────────────────────────────
+        IDisposable ExitStateAsync(
+            Func<TState, TState, CancellationToken, Task> callback);
+        IDisposable ExitStateAsync(
+            Func<TState, TState, object, CancellationToken, Task> callback);
+        IDisposable ExitStateAsync(
+            TState targetState,
+            Func<TState, CancellationToken, Task> callback);
+        IDisposable ExitStateAsync(
+            TState targetState,
+            Func<TState, object, CancellationToken, Task> callback);
+        IDisposable ExitStateAsync<TTrigger>(
+            TState targetState,
+            Func<TState, TTrigger, CancellationToken, Task> callback)
+            where TTrigger : struct;
     }
 }

@@ -124,6 +124,25 @@ namespace RxFSM
         /// </summary>
         internal void ExecuteTransitionCore(TState prev, TState next, object trigger)
         {
+            if (HasMatchingExitAsync(prev, trigger))
+            {
+                _ = ExecuteTransitionCoreAsync(prev, next, trigger);
+                return;
+            }
+
+            ExecuteTransitionCoreAfterExitAsync(prev, next, trigger);
+        }
+
+        private async Task ExecuteTransitionCoreAsync(TState prev, TState next, object trigger)
+        {
+            await RunExitStateAsync(prev, next, trigger);
+            if (_disposed || _deactivateCount > 0) return;
+
+            ExecuteTransitionCoreAfterExitAsync(prev, next, trigger);
+        }
+
+        private void ExecuteTransitionCoreAfterExitAsync(TState prev, TState next, object trigger)
+        {
             // Cancel in-flight filter pipelines and interrupt
             CancelAllFilterPipelines();
             CancelInterrupt();
