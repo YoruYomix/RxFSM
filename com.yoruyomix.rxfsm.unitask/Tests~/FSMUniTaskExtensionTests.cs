@@ -8,8 +8,8 @@ namespace RxFSM
 {
     public class FSMUniTaskExtensionTests : MonoBehaviour
     {
-        enum S { Idle, Walk, Run, Hit }
-        readonly struct MoveStarted { }
+        public enum S { Idle, Walk, Run, Hit }
+        public readonly struct MoveStarted { }
         readonly struct Sprint      { }
         readonly struct Damaged     { public readonly float amount; public Damaged(float a) { amount = a; } }
 
@@ -31,6 +31,7 @@ namespace RxFSM
             yield return T6_5_ToUniTaskAlreadyInTargetState().ToCoroutine();
             yield return T6_6_ToUniTaskDisposedFsmWhileWaiting().ToCoroutine();
             yield return T6_7_ToUniTaskMultipleConcurrentAwaits().ToCoroutine();
+            yield return T6_8_ActionTableExitStateAsyncAttribute().ToCoroutine();
             PrintFinal();
         }
 
@@ -182,6 +183,29 @@ namespace RxFSM
             sm.Dispose();
         }
 
+        // ── T6.8 — [ExitStateAsync] action table source generator ───────────────
+
+        async UniTask T6_8_ActionTableExitStateAsyncAttribute()
+        {
+            var table = new UniTaskExitAsyncActionTable();
+            var sm = FSM.Create<S>(S.Idle)
+                .AddTransition<MoveStarted>(S.Idle, S.Walk)
+                .Build();
+
+            sm.AddActionTable(table);
+            sm.Trigger(new MoveStarted());
+            Assert(sm.State == S.Idle, "T6.8a — [ExitStateAsync] blocks transition until awaited");
+
+            await UniTask.Delay(100);
+
+            Assert(sm.State == S.Walk, "T6.8b — [ExitStateAsync] completes transition");
+            Assert(table.CallCount == 1 &&
+                   table.GotNext == S.Walk &&
+                   table.GotTrigger is MoveStarted,
+                "T6.8c — source generator wires [ExitStateAsync] with next and trigger");
+            sm.Dispose();
+        }
+
         // ── Helpers ──────────────────────────────────────────────────────────────
 
         async UniTask TriggerAfterDelay(FSM<S> sm, int ms, CancellationToken ct)
@@ -218,6 +242,23 @@ namespace RxFSM
             try   { await task; }
             catch { /* cancelled or other — either is acceptable */ }
             onDone();
+        }
+    }
+
+    [ActionTable(FSMUniTaskExtensionTests.S.Idle)]
+    partial class UniTaskExitAsyncActionTable
+    {
+        public int CallCount;
+        public FSMUniTaskExtensionTests.S GotNext;
+        public object GotTrigger;
+
+        [ExitStateAsync]
+        async UniTask OnExit(FSMUniTaskExtensionTests.S next, FSMUniTaskExtensionTests.MoveStarted trigger, CancellationToken ct)
+        {
+            CallCount++;
+            GotNext = next;
+            GotTrigger = trigger;
+            await UniTask.Delay(50, cancellationToken: ct);
         }
     }
 }
